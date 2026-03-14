@@ -1,0 +1,114 @@
+<!--
+  AirTrack 1.0.0
+  Copyright (c) 2025 Trevor (“Subhuti”). All rights reserved.
+  SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
+-->
+
+-->
+
+-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports</title>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/reports.css') }}?v={{ time() }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/themes.css') }}?v={{ cache_bust }}">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <script src="{{ url_for('static', filename='js/reports.js') }}"></script>
+</head>
+
+<body class="theme-{{ selected_theme }}">
+  <div class="background"></div>
+  {% include 'header.html' %}
+
+    <h1 class="airtrack-section-title">Reports</h1>
+
+    <!-- Disclaimer Modal -->
+    {% if show_disclaimer %}
+    <div id="disclaimerModal" class="modal fade" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Disclaimer</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p>
+                        These reports are generated only from data manually entered.  
+                        They do not represent real-world flight activity beyond your logged sightings.
+                        They will differ between users of AirTrack.
+                    </p>
+                    <div class="form-check">
+                        <input type="checkbox" class="form-check-input" id="hideDisclaimer">
+                        <label class="form-check-label" for="hideDisclaimer">Don't show this again</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-primary" id="acceptDisclaimer">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Report Buttons -->
+    <div class="reports-button-group text-center">
+        <a href="#" class="btn btn-default report-link" data-report="most_seen_aircraft">Most Seen Aircraft</a>
+        <a href="#" class="btn btn-default report-link" data-report="top_airlines">Top Airlines</a>
+        <a href="#" class="btn btn-default report-link" data-report="most_frequent_routes">Most Frequent Routes</a>
+        <a href="#" class="btn btn-default report-link" data-report="top_countries">Top Countries of Registration</a>
+        <a href="#" class="btn btn-default report-link" data-report="most_common_models">Most Common Models Per Country</a>
+        <a href="#" class="btn btn-default report-link" data-report="top_10_busiest_airports">Top 10 Busiest Airports</a>
+        <a href="#" class="btn btn-default report-link" data-report="first_time_sightings">First-Time Sightings</a>
+        <a href="#" class="btn btn-default report-link" data-report="oldest_aircraft">Oldest Aircraft Still in Service</a>
+        <a href="#" class="btn btn-default report-link" data-report="rare_airlines">Rare Airline Sightings</a>
+        <a href="#" class="btn btn-default report-link" data-report="logged_airports">Logged Airports</a>
+        <a href="#" class="btn btn-default report-link" data-report="different_aircraft">Different Aircraft Types</a>
+    </div>
+
+    <!-- Report Results Container -->
+    <div id="reportResults" class="report-results-area">
+        <p id="defaultReportText" class="report-info-text pulse-text">Select a report to view data.</p>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            document.querySelectorAll(".report-link").forEach(button => {
+                button.addEventListener("click", function (event) {
+                    event.preventDefault();
+                    let reportType = this.dataset.report;
+                    let loadingTimer = null;
+        
+                    // Set a delayed timer for showing "Loading..." after 250ms
+                    loadingTimer = setTimeout(function() {
+                        document.getElementById("reportResults").innerHTML = "<p class='report-info-text'>Loading...</p>";
+                    }, 250);
+        
+                    fetch(`/reports/${reportType}`)
+                        .then(response => response.text())
+                        .then(data => {
+                            clearTimeout(loadingTimer); // Cancel loading text if response was fast
+                            document.getElementById("reportResults").innerHTML = data;
+                        })
+                        .catch(error => {
+                            clearTimeout(loadingTimer);
+                            document.getElementById("reportResults").innerHTML = "<p style='color: red;'>Error loading report.</p>";
+                            console.error("❌ Fetch Error:", error);
+                        });
+                });
+            });
+        });
+        </script>
+        
+    {% include 'footer.html' %}
+<script src="{{ url_for('static', filename='js/theme_loader.js') }}"></script>
+</body>
+</html>
