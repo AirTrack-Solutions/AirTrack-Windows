@@ -8,6 +8,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <title>Admin Cockpit</title>
 
   <!-- CSRF for JS fetch() -->
@@ -105,7 +106,7 @@
 
   <!-- Center radar / confirmation display -->
   <div id="cockpit-center-display">
-    <div id="radar-content">T-YSBK241</div>
+    <div id="radar-content">{{ settings.get('Callsign', '') if settings else '' }}</div>
     <div id="action-confirmation"></div>
   </div>
 
@@ -148,8 +149,6 @@
       </form>
 
       <a href="https://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Launch Bug Tracker</button></a>
-
-      <button type="button" class="cockpit-hud-button" onclick="openCleanupModal()" title="Remove old backups, exports and rotate logs.">Clean Up</button>
     </div>
   </div>
 
@@ -177,6 +176,7 @@
     {% if is_server and show_commit_push %}
     <button class="cockpit-hud-button" onclick="openGit()">Git / Updates</button>
     {% elif not is_server %}
+    <button type="button" class="cockpit-hud-button" onclick="openCleanupModal()" title="Remove old backups, exports and rotate logs.">Clean Up</button>
     <button class="cockpit-hud-button" onclick="openGit()">Update</button>
     {% endif %}
   </div>
@@ -280,7 +280,7 @@
         <div id="settingsStatus" class="status"></div>
         <div class="btn-row">
           <button class="btn ghost" onclick="closeSettings()">Close</button>
-          <button id="saveSettingsBtn" class="btn primary">Save</button>
+          <button id="saveSettingsBtn" class="btn primary" onclick="saveSettings()">Save</button>
         </div>
       </div>
     </div>
@@ -500,6 +500,7 @@
       if (name) activateSettingsTab(name);
     });
 
+    // ---------- Theme grid setup -------------------------------------------
     (function () {
       const grid = document.getElementById('theme-grid');
       const current = localStorage.getItem('airtrack-theme') || 'default';
@@ -511,76 +512,64 @@
         });
         localStorage.setItem('airtrack-theme', t);
       }
+      window._applyTheme = applyTheme;
 
-      fetch('/static/themes/themes.json?v=' + Date.now())
-        .then(r => r.json())
-        .then(list => {
-          grid.innerHTML = list.map(t => `
-            <label class="theme-card ${t.value === current ? 'active' : ''}" data-theme="${t.value}" title="${t.name}">
-              <input type="radio" name="set-theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
-              <img class="theme-thumb" src="${t.thumb_url}" alt="${t.name} thumbnail" loading="lazy">
-              <div class="theme-name">${t.name}</div>
-            </label>
-          `).join('');
+      if (grid) {
+        fetch('/static/themes/themes.json?v=' + Date.now())
+          .then(r => r.json())
+          .then(list => {
+            grid.innerHTML = list.map(t => `
+              <label class="theme-card ${t.value === current ? 'active' : ''}" data-theme="${t.value}" title="${t.name}">
+                <input type="radio" name="set-theme" value="${t.value}" ${t.value === current ? 'checked' : ''}>
+                <img class="theme-thumb" src="${t.thumb_url}" alt="${t.name} thumbnail" loading="lazy">
+                <div class="theme-name">${t.name}</div>
+              </label>
+            `).join('');
+            grid.addEventListener('click', e => {
+              const card = e.target.closest('.theme-card');
+              if (!card) return;
+              const t = card.dataset.theme;
+              grid.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c === card));
+              grid.querySelectorAll('input[name="set-theme"]').forEach(i => i.checked = (i.value === t));
+              applyTheme(t);
+            });
+          })
+          .catch(() => { grid.innerHTML = '<p style="opacity:.7">Could not load themes.</p>'; });
+      }
+    })();
 
-          grid.addEventListener('click', e => {
-            const card = e.target.closest('.theme-card');
-            if (!card) return;
-            const t = card.dataset.theme;
-
-            grid.querySelectorAll('.theme-card').forEach(c => c.classList.toggle('active', c === card));
-            grid.querySelectorAll('input[name="set-theme"]').forEach(i => i.checked = (i.value === t));
-            applyTheme(t);
-          });
-        })
-        .catch(() => { grid.innerHTML = '<p style="opacity:.7">Could not load themes.</p>'; });
-
+    // ---------- Save Settings (global so onclick= works) --------------------
+    window.saveSettings = async function saveSettings() {
+      const callsign = (document.getElementById('set-callsign')?.value || '').trim();
+      const timezone = (document.getElementById('set-timezone')?.value || 'UTC').trim();
+      const theme = (document.querySelector('input[name="set-theme"]:checked')?.value || 'default');
       const statusEl = document.getElementById('settingsStatus');
       const saveBtn = document.getElementById('saveSettingsBtn');
 
-      function setStatusBar(msg, ok = true) {
+      function setStatusBar(msg, ok) {
+        if (!statusEl) return;
         statusEl.textContent = msg || '';
-        statusEl.className = ok ? 'status ok' : 'status err';
+        statusEl.className = (ok !== false) ? 'status ok' : 'status err';
       }
 
-      async function saveSettings() {
-        const callsign = (document.getElementById('set-callsign')?.value || '').trim();
-        const timezone = (document.getElementById('set-timezone')?.value || 'UTC').trim();
-        const theme = (document.querySelector('input[name="set-theme"]:checked')?.value || 'default');
+      setStatusBar('Saving…', true);
+      if (saveBtn) saveBtn.disabled = true;
 
-        setStatusBar('Saving…', true);
-        saveBtn.disabled = true;
-
-        try {
-          const form = new FormData();
-          form.append('callsign', callsign);
-          form.append('first_name', '');
-          form.append('last_name', '');
-
-          await fetch('{{ url_for("admin.save_settings") }}', {
-            method: 'POST',
-            credentials: 'same-origin',
-            body: form
-          });
-
-          await postJSON('{{ url_for("admin.update_app_settings") }}', { timezone, theme });
-
-          [document.documentElement, document.body].forEach(el => {
-            el.className = el.className.replace(/\btheme-\S+/g, '').trim();
-            el.classList.add('theme-' + theme);
-          });
-
-          setStatusBar('Saved.');
-        } catch (e) {
-          console.error(e);
-          setStatusBar('Failed to save settings.', false);
-        } finally {
-          saveBtn.disabled = false;
-        }
+      try {
+        const r1 = await postJSON('{{ url_for("admin.save_settings") }}', { callsign, first_name: '', last_name: '' });
+        if (!r1 || !r1.success) throw new Error((r1 && r1.error) || 'save_settings failed');
+        const r2 = await postJSON('{{ url_for("admin.update_app_settings") }}', { timezone, theme });
+        if (!r2 || !r2.success) throw new Error((r2 && r2.error) || 'update_app_settings failed');
+        if (window._applyTheme) window._applyTheme(theme);
+        setStatusBar('Saved.', true);
+        setTimeout(() => location.reload(), 600);
+      } catch (e) {
+        console.error('saveSettings error:', e);
+        setStatusBar('Failed to save settings.', false);
+      } finally {
+        if (saveBtn) saveBtn.disabled = false;
       }
-
-      if (saveBtn) saveBtn.addEventListener('click', saveSettings);
-    })();
+    }
 
     const API = (window.AIRTRACK || {});
 

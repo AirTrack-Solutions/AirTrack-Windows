@@ -87,16 +87,16 @@ app = Flask(
 
 try:
     if os.getenv("AIRTRACK_ROLE") == "client":
-        from utils.license import load_license
+        from config.license import load_license
 
         license_data = load_license()
 
         if license_data:
             print("✔ License loaded")
-            print(f"Customer: {license_data.get('name')}")
-            print(f"Edition: {license_data.get('edition')}")
-            print(f"License ID: {license_data.get('license_id')}")
-            print(f"Issued: {license_data.get('issued')}")
+            print(f"Customer: {license_data.name}")
+            print(f"Edition: {license_data.edition}")
+            print(f"License ID: {license_data.license_id}")
+            print(f"Issued: {license_data.issued}")
         else:
             print("⚠ No license detected")
 
@@ -149,14 +149,15 @@ jinja_filters.register_filters(app)
 
 # CSRF setup
 csrf = CSRFProtect()
-csrf.init_app(app)
-
 app.config.update(
     WTF_CSRF_TIME_LIMIT=None,
     WTF_CSRF_SSL_STRICT=False,
+    WTF_CSRF_HEADERS=['X-CSRFToken'],
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=False,
 )
+
+csrf.init_app(app)
 
 # ---------------------------------------------------------------------------
 # Context processors
@@ -1119,6 +1120,7 @@ app.register_blueprint(edit_aircraft_bp)
 app.register_blueprint(airline_logo_linker)
 app.register_blueprint(admin_tools_routes.admin_tools_bp)
 csrf.exempt(admin_tools_routes.admin_tools_bp)
+csrf.exempt(admin_bp)
 app.register_blueprint(airports_api_bp)
 if billing_bp:
     app.register_blueprint(billing_bp)

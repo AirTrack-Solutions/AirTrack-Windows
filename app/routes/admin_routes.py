@@ -8,8 +8,6 @@ from flask import (
     Blueprint,
     render_template,
     request,
-    flash,
-    redirect,
     url_for,
     jsonify,
     current_app,
@@ -263,34 +261,46 @@ def admin_settings():
 
 @admin_bp.route("/save_settings", methods=["POST"])
 def save_settings():
+    """
+    Accept either JSON or form-encoded POST and persist
+    first_name / last_name / callsign into app_settings.
+    """
+    try:
+        data = request.get_json(silent=True)
+        if data is None:
+            data = {
+                "first_name": request.form.get("first_name", ""),
+                "last_name":  request.form.get("last_name",  ""),
+                "callsign":   request.form.get("callsign",   ""),
+            }
 
-    first_name = request.form.get("first_name", "").strip()
-    last_name = request.form.get("last_name", "").strip()
-    callsign = request.form.get("callsign", "").strip()
+        # Map incoming keys → DB SettingKey names
+        key_map = {
+            "first_name": "FirstName",
+            "last_name":  "LastName",
+            "callsign":   "Callsign",
+        }
 
-    for key, value in [
-        ("FirstName", first_name),
-        ("LastName", last_name),
-        ("Callsign", callsign),
-    ]:
+        with db.engine.begin() as conn:
+            for field, db_key in key_map.items():
+                value = (data.get(field) or "").strip()
+                conn.execute(
+                    text(
+                        """
+                        INSERT INTO app_settings (SettingKey, SettingValue)
+                        VALUES (:key, :value)
+                        ON DUPLICATE KEY UPDATE
+                            SettingValue = VALUES(SettingValue)
+                        """
+                    ),
+                    {"key": db_key, "value": value},
+                )
 
-        db.session.execute(
-            text(
-                """
-                INSERT INTO app_settings (SettingKey, SettingValue)
-                VALUES (:key, :value)
-                ON DUPLICATE KEY UPDATE
-                    SettingValue = VALUES(SettingValue)
-                """
-            ),
-            {"key": key, "value": value},
-        )
+        return jsonify({"success": True})
 
-    db.session.commit()
-
-    flash("Settings updated successfully!", "success")
-
-    return redirect(url_for("admin.admin_settings"))
+    except Exception as e:
+        current_app.logger.exception("save_settings failed")
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @admin_bp.route("/update_app_settings", methods=["POST"])

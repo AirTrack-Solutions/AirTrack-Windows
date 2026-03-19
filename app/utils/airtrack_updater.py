@@ -11,10 +11,9 @@
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
-from datetime import datetime
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -23,27 +22,39 @@ import requests
 # ---------------------------------------------------------------------------
 # Paths
 # ---------------------------------------------------------------------------
-BASE_DIR  = Path(__file__).resolve().parent.parent   # /app
-LOG_DIR   = BASE_DIR / "logs"
-LOG_FILE  = LOG_DIR / "updater.log"
+BASE_DIR    = Path(__file__).resolve().parent.parent   # /app
+LOG_DIR     = BASE_DIR / "logs"
+LOG_FILE    = LOG_DIR / "updater.log"
 CONFIG_FILE = BASE_DIR / "config.json"
 
-UPDATE_BASE_URL  = "https://www.airtracksolutions.com/updates/"
-UPDATE_JSON_URL  = UPDATE_BASE_URL + "update.json"
-REQUEST_TIMEOUT  = (10, 60)   # (connect, read) seconds
+STAGING_DIR = BASE_DIR / "static" / "updates"   # cleaned up after each update
 
-# Files / directories that must never be overwritten
+UPDATE_BASE_URL = "https://www.airtracksolutions.com/updates/"
+UPDATE_JSON_URL = UPDATE_BASE_URL + "update.json"
+REQUEST_TIMEOUT = (10, 60)   # (connect, read) seconds
+
+# Directories / top-level paths that must never be overwritten.
+# Note: config/ is NOT blocked here — config/license.py is a deployable file.
+# Sensitive data files inside config/ are blocked individually via PROTECTED_FILES.
 PROTECTED = {
-    "config",
     "config.json",
     "database",
     "uploads",
     "backups",
-    "license.lic",
+    "app_data",
+    "Dockerfile",
+    "docker-compose.windows.yml",
+    "static/updates",   # staging area — never overwrite, cleaned up post-update
+}
+
+# Individual file paths that must never be overwritten regardless of directory
+PROTECTED_FILES = {
+    "config/license.lic",
+    "config.json",
     ".env",
     ".env.server",
     ".env.client",
-    "app_data",
+    "license.lic",
 }
 
 # ---------------------------------------------------------------------------
@@ -89,8 +100,67 @@ def _local_version() -> str:
 
 
 def _is_protected(rel_path: str) -> bool:
+    normalized = Path(rel_path).as_posix()
+
+    # Check exact protected file paths
+    if normalized in PROTECTED_FILES:
+        return True
+
+    # Check top-level directory names and composite paths
     parts = Path(rel_path).parts
-    return bool(parts and parts[0] in PROTECTED)
+    if parts and parts[0] in PROTECTED:
+        return True
+
+    for p in PROTECTED:
+        if normalized == p or normalized.startswith(p + "/"):
+            return True
+
+    return False
+
+
+def _load_license_identity() -> tuple[str, str]:
+    """
+    Silently read name and license_id from config/license.lic.
+    Returns ("UNKNOWN", "UNLICENSED") if anything fails.
+    Never raises.
+    """
+    try:
+        import json
+        lic_path = BASE_DIR / "config" / "license.lic"
+        if lic_path.exists():
+            data = json.loads(lic_path.read_text(encoding="utf-8"))
+            name = data.get("name") or "UNKNOWN"
+            license_id = data.get("license_id") or "UNLICENSED"
+            return name, license_id
+    except Exception:
+        pass
+    return "UNKNOWN", "UNLICENSED"
+
+
+# ---------------------------------------------------------------------------
+# Staging cleanup
+# ---------------------------------------------------------------------------
+
+def cleanup_staging() -> dict[str, Any]:
+    """
+    Remove the static/updates staging directory if it exists.
+    Called automatically after a successful update to prevent stale files
+    from being mistaken for live code.
+
+    Returns:
+        {"cleaned": bool, "detail": str}
+    """
+    if not STAGING_DIR.exists():
+        _log("🧹 No staging directory found — nothing to clean.")
+        return {"cleaned": False, "detail": "No staging directory found."}
+
+    try:
+        shutil.rmtree(STAGING_DIR)
+        _log(f"🧹 Staging directory removed: {STAGING_DIR}")
+        return {"cleaned": True, "detail": f"Staging directory '{STAGING_DIR}' removed."}
+    except Exception as e:
+        _log(f"⚠️  Failed to remove staging directory: {e}")
+        return {"cleaned": False, "detail": f"Failed to remove staging directory: {e}"}
 
 
 # ---------------------------------------------------------------------------
@@ -214,13 +284,17 @@ def download_updates(files: list[dict]) -> dict[str, Any]:
 
 def run_full_update() -> dict[str, Any]:
     """
-    Full update cycle: check → download changed files → report.
+    Full update cycle: check → download changed files → cleanup staging → report.
+    License identity is read silently from config/license.lic and stamped into
+    the server-side update log. Nothing is exposed to the user.
     Returns a result dict suitable for the Flask route to return as JSON.
     """
-    _log("🚀 Update check started")
+    licensed_to, license_id = _load_license_identity()
+    _log(f"🚀 Update check started | Licensed to: {licensed_to} | License ID: {license_id}")
 
     check = check_for_updates()
     if check.get("error") and check.get("up_to_date"):
+        _log(f"❌ Update check error | Licensed to: {licensed_to} | License ID: {license_id}")
         return {
             "status": "error",
             "detail": check["error"],
@@ -229,7 +303,9 @@ def run_full_update() -> dict[str, Any]:
         }
 
     if check["up_to_date"]:
-        _log("✅ Already up to date.")
+        _log(f"✅ Already up to date | Licensed to: {licensed_to} | License ID: {license_id}")
+        # Still clean up staging in case it was left over from a previous manual process
+        cleanup_staging()
         return {
             "status": "ok",
             "detail": "✅ Already up to date.",
@@ -239,14 +315,19 @@ def run_full_update() -> dict[str, Any]:
             "failed": [],
         }
 
-    _log(f"📦 {len(check['files_needing_update'])} file(s) to update")
+    _log(f"📦 {len(check['files_needing_update'])} file(s) to update | Licensed to: {licensed_to} | License ID: {license_id}")
     result = download_updates(check["files_needing_update"])
 
-    _log(f"🎉 Update complete. Updated: {len(result['updated'])}, Failed: {len(result['failed'])}")
+    # Clean up staging directory now that files are in place
+    cleanup_result = cleanup_staging()
+
+    _log(f"🎉 Update complete | Updated: {len(result['updated'])} | Failed: {len(result['failed'])} | Licensed to: {licensed_to} | License ID: {license_id}")
 
     detail = f"✅ {len(result['updated'])} file(s) updated."
     if result["failed"]:
         detail += f" ⚠️ {len(result['failed'])} file(s) failed."
+    if cleanup_result["cleaned"]:
+        detail += " 🧹 Staging directory cleared."
 
     return {
         "status": "ok" if not result["failed"] else "partial",

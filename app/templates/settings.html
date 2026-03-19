@@ -29,6 +29,7 @@
         <p class="text-center text-muted">Manage your AirTrack configurations below.</p>
 
         <form method="POST" action="{{ url_for('admin.save_settings') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <label for="api_key">Enter your Flightradar24 API Key:</label>
             <input type="text" class="form-control" name="api_key" placeholder="Enter API Key here..." required>
             <button type="submit" class="btn btn-primary mt-3">Save</button>
