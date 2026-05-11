@@ -6,6 +6,7 @@
 
 document.addEventListener("DOMContentLoaded", () => {
   const theme = localStorage.getItem("airtrack-theme") || "default";
+  document.documentElement.classList.add(`theme-${theme}`);
   document.body.classList.add(`theme-${theme}`);
 
   // Inject admin background div if admin-wrapper exists
