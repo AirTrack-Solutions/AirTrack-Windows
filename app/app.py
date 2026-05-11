@@ -434,7 +434,12 @@ def root():
 @app.route("/splash")
 
 def splash():
-    return render_template("splash.html", current_time=time())
+    return render_template(
+        "splash.html",
+        current_time=time(),
+        selected_theme=get_current_theme(),
+        cache_bust=int(time()),
+    )
 
 
 @app.route("/reports")
@@ -502,6 +507,8 @@ def index():
             total_pages=1,
             current_year=current_year,
             settings=settings,
+            selected_theme=get_current_theme(),
+            cache_bust=int(time()),
         )
 
     except Exception as e:
@@ -515,6 +522,8 @@ def index():
             selected_airline_name="",
             no_aircraft_message="", current_year=current_year,
             settings={},
+            selected_theme=get_current_theme(),
+            cache_bust=int(time()),
         )
 
 
