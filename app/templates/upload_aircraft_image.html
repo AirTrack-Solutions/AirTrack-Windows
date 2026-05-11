@@ -4,8 +4,6 @@
   SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
 -->
 
--->
-
 <!--
   AirTrack 1.0.0 'Wilbur' — Release 300
   Copyright (c) 2025 Trevor (“Subhuti”).
@@ -55,18 +53,26 @@
     <select name="airline" id="airlineSelect" class="form-select" required>
       <option value="">-- Select Airline --</option>
       {% for a in airlines %}
-        <option value="{{ a.AirlineID }}">{{ a.AirlineName }}</option>
+        <option value="{{ a.AirlineID }}" {% if prefill_airline_id and a.AirlineID == prefill_airline_id %}selected{% endif %}>{{ a.AirlineName }}</option>
       {% endfor %}
     </select>
   </div>
 
-  <!-- Registration (dynamic) -->
+<!-- Registration (dynamic or pre-filled) -->
+  {% if prefill_registration %}
+  <div class="mb-3">
+    <label>Registration</label>
+    <input type="text" name="registration" class="form-control"
+           value="{{ prefill_registration }}" readonly>
+  </div>
+  {% else %}
   <div class="mb-3" id="registrationGroup" style="display:none;">
     <label>Registration</label>
     <select name="registration" id="registrationSelect" class="form-select" required>
       <option value="">-- Select Registration --</option>
     </select>
   </div>
+  {% endif %}
 
   <!-- Image -->
   <div class="mb-3">
@@ -79,12 +85,12 @@
 </div>
 </div>
 
+{% if matched_files is defined and matched_files %}
 <!-- ================= SMART ATTACH ================= -->
 <div class="card">
 <div class="card-body">
 <h5>Existing Images</h5>
 
-{% if matched_files %}
 <table class="table table-striped">
 <thead>
 <tr>

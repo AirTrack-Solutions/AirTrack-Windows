@@ -115,6 +115,12 @@
     <div class="cockpit-hud-column hud-left">
       <a href="{{ url_for('index') }}"><button type="button" class="cockpit-hud-button" title="Fasten your seat belts and trays in the upright position.">Home</button></a>
 
+      <button class="cockpit-hud-button"
+          onclick="window.location.href='/admin/manual_aircraft';"
+          title="Do some of the work for yourself, add an aircraft manually.">
+        Manual Aircraft Entry
+      </button>
+
       <form class="cockpit-hud-form" action="{{ url_for('backup_database') }}" method="post" onsubmit="showCockpitConfirmation('Backup completed');">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="cockpit-hud-button" title="For safe keeping, back it up.">Backup DB</button>
@@ -148,7 +154,12 @@
         <button class="cockpit-hud-button">Restore Backup</button>
       </form>
 
-      <a href="https://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Launch Bug Tracker</button></a>
+      {% if is_server %}
+      <form class="cockpit-hud-form" action="{{ url_for('admin_tools.broken_links') }}" method="get">
+        <button class="cockpit-hud-button">Check Airport Links</button>
+      </form>
+      {% endif %}
+
     </div>
   </div>
 
@@ -158,18 +169,16 @@
     <button class="cockpit-hud-button" onclick="openLogsOverlay()">View Logs</button>
     {% endif %}
     <a href="{{ url_for('airline_logo_linker.link_airline_logos') }}"><button type="button" class="cockpit-hud-button">Logos</button></a>
+    <a href="{{ url_for('registry.registry_list') }}"><button type="button" class="cockpit-hud-button">Registries</button></a>
 
     {% if is_server %}
-    <form class="cockpit-hud-form" action="{{ url_for('admin_tools.broken_links') }}" method="get">
-      <button class="cockpit-hud-button">Check Airport Links</button>
-    </form>
-
     <form class="cockpit-hud-form" action="{{ url_for('admin_tools.check_aircraft_images') }}" method="post" onsubmit="showCockpitConfirmation('Image check complete');">
       <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
       <button class="cockpit-hud-button">Check Images</button>
     </form>
     {% endif %}
 
+    <a href="https://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Launch Bug Tracker</button></a>
     <button class="cockpit-hud-button" onclick="openSettings()">Settings</button>
     <button class="cockpit-hud-button" onclick="openMunicipalityModal()" title="Set city name for an airport">Set Municipality</button>
 
@@ -177,7 +186,6 @@
     <button class="cockpit-hud-button" onclick="openGit()">Git / Updates</button>
     {% elif not is_server %}
     <button type="button" class="cockpit-hud-button" onclick="openCleanupModal()" title="Remove old backups, exports and rotate logs.">Clean Up</button>
-    <button class="cockpit-hud-button" onclick="openGit()">Update</button>
     {% endif %}
   </div>
 
@@ -469,6 +477,7 @@
     }
 
     function openSettings() {
+      fetch("/admin_tools/rescan_themes", { method: "POST" }).catch(() => {});
       document.getElementById('settingsModal').style.display = 'flex';
       activateSettingsTab('callsign');
     }
@@ -642,7 +651,16 @@
 
       setStatus('updateStatus', 'Updating…', true);
       const d = await postJSON(API.run_updater, {}, 'updateStatus').catch(() => null);
-      if (d && d.status === 'success') setTimeout(() => location.reload(), 1200);
+      if (d && d.status === 'success') {
+        if (d.restart_required) {
+            const banner = document.createElement('div');
+            banner.style.cssText = 'position:fixed;top:0;left:0;width:100%;background:#f0a500;color:#0a1628;text-align:center;padding:1rem;font-weight:bold;z-index:9999;font-size:1.1rem;';
+            banner.innerHTML = '⚠ Update applied. Please restart your AirTrack container to complete the update: <code>docker compose down && docker compose up -d</code>';
+            document.body.prepend(banner);
+        } else {
+            setTimeout(() => location.reload(), 1200);
+        }
+      }
     }
 
     async function runCleanup(dryRun) {

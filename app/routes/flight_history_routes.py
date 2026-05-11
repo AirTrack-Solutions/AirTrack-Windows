@@ -125,6 +125,18 @@ def record_flight_history(aircraft_id):
             },
         )
 
+        # Update aircraft record so Aircraft_Updated reflects latest sighting
+        db.session.execute(
+            text(
+                """
+                UPDATE aircraft
+                SET Times_Seen = COALESCE(Times_Seen, 0) + 1,
+                    Aircraft_Updated = :ts
+                WHERE AircraftID = :id
+                """
+            ),
+            {"ts": timestamp, "id": aircraft_id},
+        )
         db.session.commit()
         flash("Flight history recorded.", "success")
 

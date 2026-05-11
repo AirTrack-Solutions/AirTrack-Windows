@@ -119,8 +119,7 @@ p {
    ============================== */
 .aircraft-image img {
     width: 100%;
-    max-height: 400px;
-    object-fit: cover;
+    object-fit: contain;
     border-radius: 5px;
 }
 
@@ -173,6 +172,19 @@ p {
 
 .btn-danger:hover {
     background-color: #c9302c;
+}
+
+.btn.btn-sm {
+    min-width: auto;
+    padding: 2px 8px;
+    font-size: 0.8rem;
+}
+
+.aircraft-flight-history .btn-sm {
+    min-width: auto;
+    padding: 2px 10px;
+    font-size: 13px;
+    margin: 0 2px;
 }
 
 /* ==============================

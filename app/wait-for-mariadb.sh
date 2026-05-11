@@ -1,9 +1,8 @@
 #!/bin/sh
+
 # AirTrack 1.0.0
 # Copyright (c) 2025 Trevor (“Subhuti”). All rights reserved.
 # SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
-
-
 
 # wait-for-mariadb.sh
 # Gracefully wait for MariaDB, then launch AirTrack as PID 1.

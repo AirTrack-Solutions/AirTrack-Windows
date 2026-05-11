@@ -102,7 +102,7 @@ AIRTRACK_SYNC_USER=
 
 SECRET_KEY=$secretKey
 
-DB_HOST=airtrack-windows-db
+DB_HOST=airtrack-db
 DB_USER=airtrack
 DB_PASSWORD=$dbPassword
 DB_ROOT_PASSWORD=$dbRootPass

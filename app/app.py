@@ -20,7 +20,7 @@ from utils.stats_utils import get_airtrack_stats, get_all_airlines
 
 from utils.logging_utils import log_admin_action
 
-from utils.settings_utils import convert_to_local
+from utils.settings_utils import convert_to_local, get_current_theme
 
 from utils.country_flags import get_country_flag
 
@@ -36,7 +36,7 @@ import subprocess
 
 import sys
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from logging.handlers import RotatingFileHandler
 
@@ -64,7 +64,7 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf
 
 from sqlalchemy import text
 
-# Ensure this directory is importable as "app"
+# Ensure this directory is importable as 'app'
 APP_DIR = Path(__file__).resolve().parent
 if str(APP_DIR) not in sys.path:
     sys.path.insert(0, str(APP_DIR))
@@ -86,7 +86,7 @@ app = Flask(
 # ---------------------------------------------------------
 
 try:
-    if os.getenv("AIRTRACK_ROLE") == "client":
+    if os.getenv('AIRTRACK_ROLE') == "client":
         from config.license import load_license
 
         license_data = load_license()
@@ -123,6 +123,13 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 # 🔥 Initialise DB before importing models
 # ---------------------------------------------------------------------------
 db.init_app(app)
+
+# ---------------------------------------------------------------------------
+# 🔄 Run database migrations
+# ---------------------------------------------------------------------------
+from utils.migration_runner import run_migrations
+with app.app_context():
+    run_migrations(db)
 
 # ---------------------------------------------------------------------------
 # 📌 Now import billing models safely
@@ -164,16 +171,20 @@ csrf.init_app(app)
 # ---------------------------------------------------------------------------
 
 @app.context_processor
+
 def inject_app_context():
     return {"current_app": current_app, "config": current_app.config}
 
 
 @app.context_processor
+
 def inject_time():
-    return {"time": time}
+    from datetime import datetime
+    return {"time": time, "current_year": datetime.utcnow().year}
 
 
 @app.context_processor
+
 def inject_env_vars():
     try:
         return {
@@ -185,6 +196,7 @@ def inject_env_vars():
 
 
 @app.context_processor
+
 def inject_settings():
     """Expose app_settings rows as `settings` in templates."""
     try:
@@ -379,8 +391,16 @@ with app.app_context():
                 """
                 )
             )
+            conn.execute(
+                text(
+                    """
+                    INSERT IGNORE INTO settings (id, show_disclaimer)
+                    VALUES (1, 1)
+                """
+                )
+            )
     except Exception as e:
-        logging.warning("Could not seed default timezone: %s", e)
+        logging.warning("Could not seed defaults: %s", e)
 
 # ---------------------------------------------------------------------------
 # Template helpers
@@ -433,6 +453,11 @@ def reports():
             "reports.html",
             show_disclaimer=show_disclaimer,
             now=now,
+            is_server=os.getenv("AIRTRACK_ROLE", "").lower() == "server",
+            has_api_key=bool(os.getenv("ANTHROPIC_API_KEY", "").strip()),
+            license=license_data if 'license_data' in globals() else None,
+            selected_theme=get_current_theme(),
+            cache_bust=int(time()),
         )
     except Exception as e:
         logging.error("❌ Error checking disclaimer: %s", e)
@@ -563,6 +588,96 @@ def delete_flight(flight_id):
     except Exception as e:
         flash(f"Error deleting flight: {e}", "danger")
         return redirect(url_for("index"))
+
+
+# ---------------------------------------------------------------------------
+# Edit Flight – /edit_flight/<flight_id>
+# ---------------------------------------------------------------------------
+@app.route("/edit_flight/<int:flight_id>", methods=["GET", "POST"])
+@csrf.exempt
+def edit_flight(flight_id):
+    try:
+        row = db.session.execute(
+            text(
+                """
+                SELECT FlightID, AircraftID, FlightNumber, Departure, Arrival,
+                       Timestamp, Spotted_At, Notes, Registration
+                FROM flights
+                WHERE FlightID = :id
+                """
+            ),
+            {"id": flight_id},
+        ).fetchone()
+
+        if not row:
+            flash("Flight not found.", "warning")
+            return redirect(url_for("index"))
+
+        flight = dict(row._mapping)
+
+        # Look up aircraft_id for redirect
+        ac_row = db.session.execute(
+            text("SELECT AircraftID FROM aircraft WHERE Registration = :reg LIMIT 1"),
+            {"reg": flight["Registration"]},
+        ).fetchone()
+        aircraft_id = ac_row[0] if ac_row else None
+
+        if request.method == "POST":
+            flight_number = (request.form.get("FlightNumber") or "").strip().upper()
+            departure     = (request.form.get("Departure") or "").strip().upper()
+            arrival       = (request.form.get("Arrival") or "").strip().upper()
+            spotted_at    = (request.form.get("Spotted_At") or "").strip()
+            notes         = (request.form.get("Notes") or "").strip()
+            timestamp_raw = (request.form.get("Timestamp") or "").strip()
+
+            try:
+                timestamp = datetime.strptime(timestamp_raw, "%Y-%m-%dT%H:%M") if timestamp_raw else flight["Timestamp"]
+            except ValueError:
+                timestamp = flight["Timestamp"]
+
+            db.session.execute(
+                text(
+                    """
+                    UPDATE flights SET
+                        FlightNumber = :FlightNumber,
+                        Departure    = :Departure,
+                        Arrival      = :Arrival,
+                        Spotted_At   = :Spotted_At,
+                        Notes        = :Notes,
+                        Timestamp    = :Timestamp
+                    WHERE FlightID = :FlightID
+                    """
+                ),
+                {
+                    "FlightNumber": flight_number or None,
+                    "Departure":    departure or None,
+                    "Arrival":      arrival or None,
+                    "Spotted_At":   spotted_at or None,
+                    "Notes":        notes or None,
+                    "Timestamp":    timestamp,
+                    "FlightID":     flight_id,
+                },
+            )
+            db.session.commit()
+            flash("Flight updated successfully.", "success")
+            return redirect(
+                url_for("aircraft.aircraft_info", aircraft_id=aircraft_id)
+                if aircraft_id
+                else url_for("aircraft.aircraft_table")
+            )
+
+    except Exception as e:
+        db.session.rollback()
+        flash(f"Error loading flight: {e}", "danger")
+        return redirect(url_for("index"))
+
+    from utils.settings_utils import get_current_theme
+    return render_template(
+        "edit_flight.html",
+        flight=flight,
+        aircraft_id=aircraft_id,
+        selected_theme=get_current_theme(),
+    )
 
 
 @app.route("/delete_aircraft/<int:aircraft_id>", methods=["POST"])
@@ -787,12 +902,12 @@ def delete_airline(airline_id):
             else:
                 flash("Invalid option.", "danger")
 
-        return redirect(url_for("airlines"))
+        return redirect(url_for("airlines.airlines_table"))
 
     except Exception as e:
         logging.error("❌ Airline delete error: %s", e)
         flash("Error deleting airline.", "danger")
-        return redirect(url_for("airlines"))
+        return redirect(url_for("airlines.airlines_table"))
 
 
 # Disclaimer routes
@@ -815,7 +930,7 @@ def get_disclaimer_status():
 
 
 @app.route("/hide_disclaimer", methods=["POST"])
-
+@csrf.exempt
 def hide_disclaimer():
     try:
         with db.engine.begin() as conn:
@@ -1023,8 +1138,6 @@ def admin_panel():
         return None
 
     airtrack_urls = {
-        "check_updates": _safe_url("admin_tools.check_updates"),
-        "run_updater": _safe_url("admin_tools.run_updater"),
         "git_commit": _safe_url("admin_tools.git_commit"),
         "git_push": _safe_url("admin_tools.git_push"),
         "housekeeping": _safe_url("admin_tools.housekeeping"),
@@ -1100,9 +1213,14 @@ from routes import admin_tools_routes
 
 from routes.airports_api import bp as airports_api_bp
 
+from routes.manual_entry_routes import manual_entry_bp
+from routes.registry_routes import registry_bp
+
 try:
     from routes.billing_routes import billing_bp
+    
     from routes.billing_webhook_routes import billing_webhook_bp
+
 except ImportError:
     billing_bp = None
     billing_webhook_bp = None
@@ -1119,8 +1237,12 @@ app.register_blueprint(add_aircraft_bp)
 app.register_blueprint(edit_aircraft_bp)
 app.register_blueprint(airline_logo_linker)
 app.register_blueprint(admin_tools_routes.admin_tools_bp)
+app.register_blueprint(manual_entry_bp)
+app.register_blueprint(registry_bp)
+csrf.exempt(manual_entry_bp)
 csrf.exempt(admin_tools_routes.admin_tools_bp)
 csrf.exempt(admin_bp)
+csrf.exempt(aircraft_bp)
 app.register_blueprint(airports_api_bp)
 if billing_bp:
     app.register_blueprint(billing_bp)

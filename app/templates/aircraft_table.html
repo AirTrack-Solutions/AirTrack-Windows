@@ -4,10 +4,6 @@
   SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
 -->
 
--->
-
--->
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -37,7 +33,7 @@
            class="form-control search-box"
            placeholder="Search Aircraft"
            value="{{ search_query }}"
-           onkeyup="searchAircraft()" />
+           />
 </div>
 
 <div class="aircraft-table-wrapper">
@@ -61,19 +57,20 @@
         {% if aircraft_list %}
             {% for a in aircraft_list %}
             <tr>
-                <td>{{ a['AirlineName'] or '—' }}</td>
-                <td>{{ a['FlightNumber'] or '—' }}</td>
-                <td>{{ a['Registration'] or '—' }}</td>
-                <td>{{ a['Aircraft_Type'] or '—' }}</td>
-                <td>{{ a['Departure'] | airport if a['Departure'] else '—' }}</td>
-                <td>{{ a['Arrival'] | airport if a['Arrival'] else '—' }}</td>
+                <td title="{{ a['AirlineName'] or '' }}">{{ a['AirlineName'] or '—' }}</td>
+                <td title="{{ a['FlightNumber'] or '' }}">{{ a['FlightNumber'] or '—' }}</td>
+                <td title="{{ a['Registration'] or '' }}">{{ a['Registration'] or '—' }}</td>
+                <td title="{{ a['Aircraft_Type'] or '' }}">{{ a['Aircraft_Type'] or '—' }}</td>
+                <td title="{{ a['Departure'] | airport if a['Departure'] else '' }}">{{ a['Departure'] | airport if a['Departure'] else '—' }}</td>
+                <td title="{{ a['Arrival'] | airport if a['Arrival'] else '' }}">{{ a['Arrival'] | airport if a['Arrival'] else '—' }}</td>
                 <td>{{ a['First_Sighted_Display'] or '—' }}</td>
                 <td>{{ a['Aircraft_Updated_Display'] or '—' }}</td>
 
                 <td>
                     {% if a['Country_Flag'] %}
                         <img src="{{ url_for('static', filename='flags/' + a['Country_Flag']) }}"
-                             alt="Flag" class="flag-img">
+                            alt="Flag" class="flag-img"
+                            title="{{ a['Country_of_Reg'] or '' }}">
                     {% else %}
                         <span>No Flag</span>
                     {% endif %}
@@ -102,7 +99,7 @@
             <tr>
                 <td colspan="10" class="text-center">
                     ⚠️ No aircraft found.<br><br>
-                    <a href="{{ url_for('add_aircraft.add_aircraft', registration=registration) }}"
+                    <a href="{{ url_for('add_aircraft.add_aircraft', registration=selected_registration) }}"
                        class="btn btn-teal" id="fallback-add-btn">
                         Add Aircraft
                     </a>
@@ -212,13 +209,11 @@ $(document).ready(function () {
         if (tbody.length) $("#aircraft-tbody").html(tbody.html());
         if (pagination.length) $(".pagination-container").html(pagination.html());
 
-        if (tbody.html()?.includes("No aircraft found")) {
-          const fallbackLink = $("#fallback-add-btn");
-          if (fallbackLink.length) {
-            const baseUrl = fallbackLink.attr("href").split("?")[0];
-            fallbackLink.attr("href", baseUrl + "?registration=" + encodeURIComponent(query));
-          }
-        }
+        // Update fallback "Add aircraft" link after DOM update
+        $("#fallback-add-btn").each(function() {
+          const baseUrl = $(this).attr("href").split("?")[0];
+          $(this).attr("href", baseUrl + "?registration=" + encodeURIComponent(query));
+        });
       });
   });
 });

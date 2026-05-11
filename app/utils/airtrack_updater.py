@@ -29,7 +29,7 @@ CONFIG_FILE = BASE_DIR / "config.json"
 
 STAGING_DIR = BASE_DIR / "static" / "updates"   # cleaned up after each update
 
-UPDATE_BASE_URL = "https://www.airtracksolutions.com/updates/"
+UPDATE_BASE_URL = "https://airtracksolutions.com/updates/"
 UPDATE_JSON_URL = UPDATE_BASE_URL + "update.json"
 REQUEST_TIMEOUT = (10, 60)   # (connect, read) seconds
 
@@ -269,7 +269,7 @@ def download_updates(files: list[dict]) -> dict[str, Any]:
 
             actual_hash = _sha256(full_path)
             if actual_hash != expected_hash:
-                _log(f"⚠️  Hash mismatch after download: {rel_path}")
+                _log(f"⚠️  Hash mismatch after download: {rel_path} | expected={expected_hash} | actual={actual_hash}")
                 failed.append(rel_path)
             else:
                 _log(f"✅ Updated: {rel_path}")
@@ -328,6 +328,16 @@ def run_full_update() -> dict[str, Any]:
         detail += f" ⚠️ {len(result['failed'])} file(s) failed."
     if cleanup_result["cleaned"]:
         detail += " 🧹 Staging directory cleared."
+
+    # Auto-restart gunicorn if files were updated so migrations run immediately
+    if result["updated"]:
+        try:
+            import signal
+            gunicorn_pid = int(Path("/tmp/gunicorn.pid").read_text().strip())
+            os.kill(gunicorn_pid, signal.SIGHUP)
+            _log("🔄 Gunicorn reload triggered after update.")
+        except Exception as e:
+            _log(f"⚠ Could not auto-restart: {e} — manual restart may be required.")
 
     return {
         "status": "ok" if not result["failed"] else "partial",

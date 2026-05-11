@@ -1,9 +1,4 @@
 /*M!999999\- enable the sandbox mode */ 
--- MariaDB dump 10.19-11.4.9-MariaDB, for debian-linux-gnu (x86_64)
---
--- Host: localhost    Database: airtrack
--- ------------------------------------------------------
--- Server version	11.4.9-MariaDB-ubu2404
 
 /*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
 /*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
@@ -15,14 +10,10 @@
 /*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
 /*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
 /*M!100616 SET @OLD_NOTE_VERBOSITY=@@NOTE_VERBOSITY, NOTE_VERBOSITY=0 */;
-
---
--- Table structure for table `aircraft`
---
-
+DROP TABLE IF EXISTS `aircraft`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `aircraft` (
+CREATE TABLE `aircraft` (
   `AircraftID` int(11) NOT NULL AUTO_INCREMENT,
   `AirlineID` int(11) DEFAULT NULL,
   `FlightNumber` varchar(255) DEFAULT NULL,
@@ -45,22 +36,52 @@ CREATE TABLE IF NOT EXISTS `aircraft` (
   `Category` varchar(100) DEFAULT NULL,
   `Engine_Type` varchar(50) DEFAULT NULL,
   `Orphaned` tinyint(4) DEFAULT 0,
-  `Aircraft_Updated` timestamp NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `Aircraft_Updated` timestamp NOT NULL DEFAULT current_timestamp(),
   `Spotted_At` varchar(255) DEFAULT NULL,
   `ICAO_Address` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`AircraftID`),
+  UNIQUE KEY `idx_unique_icao` (`ICAO_Address`),
   KEY `AirlineID` (`AirlineID`),
   CONSTRAINT `aircraft_ibfk_1` FOREIGN KEY (`AirlineID`) REFERENCES `airlines` (`AirlineID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=910 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `airlines`
---
-
+DROP TABLE IF EXISTS `aircraft_images`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `airlines` (
+CREATE TABLE `aircraft_images` (
+  `ImageID` int(11) NOT NULL AUTO_INCREMENT,
+  `AircraftID` int(11) NOT NULL,
+  `Registration` varchar(20) NOT NULL,
+  `Filename` varchar(255) NOT NULL,
+  `Image_Number` tinyint(4) NOT NULL DEFAULT 2,
+  `Uploaded_At` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`ImageID`),
+  KEY `idx_aircraft_images_aircraft_id` (`AircraftID`),
+  KEY `idx_aircraft_images_registration` (`Registration`),
+  CONSTRAINT `fk_aircraft_images_aircraft` FOREIGN KEY (`AircraftID`) REFERENCES `aircraft` (`AircraftID`) ON DELETE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `aircraft_owners`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `aircraft_owners` (
+  `OwnerID` int(11) NOT NULL AUTO_INCREMENT,
+  `AircraftID` int(11) NOT NULL,
+  `AirlineID` int(11) NOT NULL,
+  `From_Date` date NOT NULL,
+  `To_Date` date DEFAULT NULL,
+  `Notes` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`OwnerID`),
+  KEY `AircraftID` (`AircraftID`),
+  KEY `AirlineID` (`AirlineID`),
+  CONSTRAINT `aircraft_owners_ibfk_1` FOREIGN KEY (`AircraftID`) REFERENCES `aircraft` (`AircraftID`) ON DELETE CASCADE,
+  CONSTRAINT `aircraft_owners_ibfk_2` FOREIGN KEY (`AirlineID`) REFERENCES `airlines` (`AirlineID`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `airlines`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8mb4 */;
+CREATE TABLE `airlines` (
   `AirlineID` int(11) NOT NULL AUTO_INCREMENT,
   `AirlineName` varchar(255) NOT NULL,
   `Last_Updated` timestamp NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
@@ -71,16 +92,12 @@ CREATE TABLE IF NOT EXISTS `airlines` (
   `Callsign` varchar(50) DEFAULT NULL,
   PRIMARY KEY (`AirlineID`),
   UNIQUE KEY `AirlineName` (`AirlineName`)
-) ENGINE=InnoDB AUTO_INCREMENT=336 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `airports`
---
-
+DROP TABLE IF EXISTS `airports`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `airports` (
+CREATE TABLE `airports` (
   `ICAO` varchar(10) NOT NULL,
   `IATA` varchar(3) DEFAULT NULL,
   `AirportName` varchar(255) NOT NULL,
@@ -105,27 +122,17 @@ CREATE TABLE IF NOT EXISTS `airports` (
   KEY `idx_icao` (`ICAO`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `app_settings`
---
-
+DROP TABLE IF EXISTS `app_settings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `app_settings` (
+CREATE TABLE `app_settings` (
   `SettingKey` varchar(100) NOT NULL,
   `SettingValue` varchar(200) DEFAULT NULL,
   PRIMARY KEY (`SettingKey`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `argentina`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `argentina` (
+DROP TABLE IF EXISTS `argentina`;
+CREATE TABLE `argentina` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -136,15 +143,8 @@ CREATE TABLE IF NOT EXISTS `argentina` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `armenia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `armenia` (
+DROP TABLE IF EXISTS `armenia`;
+CREATE TABLE `armenia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `airline` varchar(100) DEFAULT NULL,
@@ -155,15 +155,8 @@ CREATE TABLE IF NOT EXISTS `armenia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `audit_country_updates`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `audit_country_updates` (
+DROP TABLE IF EXISTS `audit_country_updates`;
+CREATE TABLE `audit_country_updates` (
   `AircraftID` int(11) NOT NULL,
   `Registration` varchar(255) DEFAULT NULL,
   `Existing_Country_of_Reg` varchar(255) DEFAULT NULL,
@@ -171,15 +164,8 @@ CREATE TABLE IF NOT EXISTS `audit_country_updates` (
   `Status` enum('Pending','Approved','Rejected') DEFAULT 'Pending',
   PRIMARY KEY (`AircraftID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `australia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `australia` (
+DROP TABLE IF EXISTS `australia`;
+CREATE TABLE `australia` (
   `registration` varchar(10) NOT NULL,
   `aircraftmanufacturer` varchar(100) DEFAULT NULL,
   `aircraftmodel` varchar(50) DEFAULT NULL,
@@ -205,15 +191,8 @@ CREATE TABLE IF NOT EXISTS `australia` (
   `icaotypedesig` varchar(10) DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `austria`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `austria` (
+DROP TABLE IF EXISTS `austria`;
+CREATE TABLE `austria` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -224,15 +203,8 @@ CREATE TABLE IF NOT EXISTS `austria` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `bahamas`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `bahamas` (
+DROP TABLE IF EXISTS `bahamas`;
+CREATE TABLE `bahamas` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -243,15 +215,8 @@ CREATE TABLE IF NOT EXISTS `bahamas` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `belgium`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `belgium` (
+DROP TABLE IF EXISTS `belgium`;
+CREATE TABLE `belgium` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -262,15 +227,8 @@ CREATE TABLE IF NOT EXISTS `belgium` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `bhutan`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `bhutan` (
+DROP TABLE IF EXISTS `bhutan`;
+CREATE TABLE `bhutan` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -281,15 +239,8 @@ CREATE TABLE IF NOT EXISTS `bhutan` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `bolivia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `bolivia` (
+DROP TABLE IF EXISTS `bolivia`;
+CREATE TABLE `bolivia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -300,15 +251,8 @@ CREATE TABLE IF NOT EXISTS `bolivia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `brazil`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `brazil` (
+DROP TABLE IF EXISTS `brazil`;
+CREATE TABLE `brazil` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -319,15 +263,8 @@ CREATE TABLE IF NOT EXISTS `brazil` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `canada`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `canada` (
+DROP TABLE IF EXISTS `canada`;
+CREATE TABLE `canada` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -338,15 +275,8 @@ CREATE TABLE IF NOT EXISTS `canada` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `cayman_islands`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `cayman_islands` (
+DROP TABLE IF EXISTS `cayman_islands`;
+CREATE TABLE `cayman_islands` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -357,15 +287,8 @@ CREATE TABLE IF NOT EXISTS `cayman_islands` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `chile`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `chile` (
+DROP TABLE IF EXISTS `chile`;
+CREATE TABLE `chile` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -376,15 +299,8 @@ CREATE TABLE IF NOT EXISTS `chile` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `china`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `china` (
+DROP TABLE IF EXISTS `china`;
+CREATE TABLE `china` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -395,15 +311,8 @@ CREATE TABLE IF NOT EXISTS `china` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `costa_rica`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `costa_rica` (
+DROP TABLE IF EXISTS `costa_rica`;
+CREATE TABLE `costa_rica` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -414,15 +323,8 @@ CREATE TABLE IF NOT EXISTS `costa_rica` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `croatia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `croatia` (
+DROP TABLE IF EXISTS `croatia`;
+CREATE TABLE `croatia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -433,15 +335,8 @@ CREATE TABLE IF NOT EXISTS `croatia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `cuba`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `cuba` (
+DROP TABLE IF EXISTS `cuba`;
+CREATE TABLE `cuba` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -452,15 +347,8 @@ CREATE TABLE IF NOT EXISTS `cuba` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `customers`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `customers` (
+DROP TABLE IF EXISTS `customers`;
+CREATE TABLE `customers` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
   `stripe_customer_id` varchar(255) DEFAULT NULL,
@@ -471,16 +359,9 @@ CREATE TABLE IF NOT EXISTS `customers` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `Email` (`email`),
   UNIQUE KEY `email_2` (`email`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `cyprus`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `cyprus` (
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+DROP TABLE IF EXISTS `cyprus`;
+CREATE TABLE `cyprus` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -491,15 +372,8 @@ CREATE TABLE IF NOT EXISTS `cyprus` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `czech_republic`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `czech_republic` (
+DROP TABLE IF EXISTS `czech_republic`;
+CREATE TABLE `czech_republic` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -510,15 +384,8 @@ CREATE TABLE IF NOT EXISTS `czech_republic` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `denmark`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `denmark` (
+DROP TABLE IF EXISTS `denmark`;
+CREATE TABLE `denmark` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -529,15 +396,8 @@ CREATE TABLE IF NOT EXISTS `denmark` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `egypt`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `egypt` (
+DROP TABLE IF EXISTS `egypt`;
+CREATE TABLE `egypt` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -548,15 +408,8 @@ CREATE TABLE IF NOT EXISTS `egypt` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `estonia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `estonia` (
+DROP TABLE IF EXISTS `estonia`;
+CREATE TABLE `estonia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -567,15 +420,8 @@ CREATE TABLE IF NOT EXISTS `estonia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `ethiopia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `ethiopia` (
+DROP TABLE IF EXISTS `ethiopia`;
+CREATE TABLE `ethiopia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -586,15 +432,8 @@ CREATE TABLE IF NOT EXISTS `ethiopia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `flights`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `flights` (
+DROP TABLE IF EXISTS `flights`;
+CREATE TABLE `flights` (
   `FlightID` int(11) NOT NULL AUTO_INCREMENT,
   `AircraftID` int(11) DEFAULT NULL,
   `AirlineID` int(11) DEFAULT NULL,
@@ -615,16 +454,9 @@ CREATE TABLE IF NOT EXISTS `flights` (
   PRIMARY KEY (`FlightID`),
   KEY `AirlineID` (`AirlineID`),
   CONSTRAINT `flights_ibfk_1` FOREIGN KEY (`AirlineID`) REFERENCES `airlines` (`AirlineID`) ON DELETE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=1085 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `france`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `france` (
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+DROP TABLE IF EXISTS `france`;
+CREATE TABLE `france` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -635,15 +467,8 @@ CREATE TABLE IF NOT EXISTS `france` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `georgia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `georgia` (
+DROP TABLE IF EXISTS `georgia`;
+CREATE TABLE `georgia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -654,15 +479,8 @@ CREATE TABLE IF NOT EXISTS `georgia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `germany`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `germany` (
+DROP TABLE IF EXISTS `germany`;
+CREATE TABLE `germany` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -673,15 +491,8 @@ CREATE TABLE IF NOT EXISTS `germany` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `greece`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `greece` (
+DROP TABLE IF EXISTS `greece`;
+CREATE TABLE `greece` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -692,15 +503,8 @@ CREATE TABLE IF NOT EXISTS `greece` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `guernsey`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `guernsey` (
+DROP TABLE IF EXISTS `guernsey`;
+CREATE TABLE `guernsey` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -711,15 +515,8 @@ CREATE TABLE IF NOT EXISTS `guernsey` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `hungary`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `hungary` (
+DROP TABLE IF EXISTS `hungary`;
+CREATE TABLE `hungary` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -730,15 +527,8 @@ CREATE TABLE IF NOT EXISTS `hungary` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `iceland`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `iceland` (
+DROP TABLE IF EXISTS `iceland`;
+CREATE TABLE `iceland` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -749,15 +539,8 @@ CREATE TABLE IF NOT EXISTS `iceland` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `indonesia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `indonesia` (
+DROP TABLE IF EXISTS `indonesia`;
+CREATE TABLE `indonesia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -768,15 +551,8 @@ CREATE TABLE IF NOT EXISTS `indonesia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `iran`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `iran` (
+DROP TABLE IF EXISTS `iran`;
+CREATE TABLE `iran` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -787,15 +563,8 @@ CREATE TABLE IF NOT EXISTS `iran` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `ireland`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `ireland` (
+DROP TABLE IF EXISTS `ireland`;
+CREATE TABLE `ireland` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -806,15 +575,8 @@ CREATE TABLE IF NOT EXISTS `ireland` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `italy`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `italy` (
+DROP TABLE IF EXISTS `italy`;
+CREATE TABLE `italy` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -825,15 +587,8 @@ CREATE TABLE IF NOT EXISTS `italy` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `japan`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `japan` (
+DROP TABLE IF EXISTS `japan`;
+CREATE TABLE `japan` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -844,15 +599,8 @@ CREATE TABLE IF NOT EXISTS `japan` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `liberia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `liberia` (
+DROP TABLE IF EXISTS `liberia`;
+CREATE TABLE `liberia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -863,15 +611,8 @@ CREATE TABLE IF NOT EXISTS `liberia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `license_activity`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `license_activity` (
+DROP TABLE IF EXISTS `license_activity`;
+CREATE TABLE `license_activity` (
   `ActivityID` int(11) NOT NULL AUTO_INCREMENT,
   `LicenseID` int(11) NOT NULL,
   `EventType` varchar(100) NOT NULL,
@@ -881,15 +622,8 @@ CREATE TABLE IF NOT EXISTS `license_activity` (
   KEY `LicenseID` (`LicenseID`),
   CONSTRAINT `license_activity_ibfk_1` FOREIGN KEY (`LicenseID`) REFERENCES `licenses` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `licenses`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `licenses` (
+DROP TABLE IF EXISTS `licenses`;
+CREATE TABLE `licenses` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `customer_id` int(11) NOT NULL,
   `license_type` enum('standard','professional','institutional') NOT NULL,
@@ -906,16 +640,9 @@ CREATE TABLE IF NOT EXISTS `licenses` (
   KEY `fk_license_customer` (`customer_id`),
   CONSTRAINT `fk_license_customer` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`),
   CONSTRAINT `licenses_ibfk_1` FOREIGN KEY (`customer_id`) REFERENCES `customers` (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `lithuania`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `lithuania` (
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+DROP TABLE IF EXISTS `lithuania`;
+CREATE TABLE `lithuania` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -926,15 +653,8 @@ CREATE TABLE IF NOT EXISTS `lithuania` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `luxembourg`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `luxembourg` (
+DROP TABLE IF EXISTS `luxembourg`;
+CREATE TABLE `luxembourg` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -945,15 +665,16 @@ CREATE TABLE IF NOT EXISTS `luxembourg` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `morocco`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `morocco` (
+DROP TABLE IF EXISTS `migrations`;
+CREATE TABLE `migrations` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `migration` varchar(255) NOT NULL,
+  `applied_at` datetime NOT NULL DEFAULT current_timestamp(),
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `migration` (`migration`)
+) ENGINE=InnoDB AUTO_INCREMENT=1 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_uca1400_ai_ci;
+DROP TABLE IF EXISTS `morocco`;
+CREATE TABLE `morocco` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -964,15 +685,8 @@ CREATE TABLE IF NOT EXISTS `morocco` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `netherlands`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `netherlands` (
+DROP TABLE IF EXISTS `netherlands`;
+CREATE TABLE `netherlands` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -983,15 +697,8 @@ CREATE TABLE IF NOT EXISTS `netherlands` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `new_zealand`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `new_zealand` (
+DROP TABLE IF EXISTS `new_zealand`;
+CREATE TABLE `new_zealand` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1002,15 +709,8 @@ CREATE TABLE IF NOT EXISTS `new_zealand` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `norway`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `norway` (
+DROP TABLE IF EXISTS `norway`;
+CREATE TABLE `norway` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1021,15 +721,8 @@ CREATE TABLE IF NOT EXISTS `norway` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `pakistan`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `pakistan` (
+DROP TABLE IF EXISTS `pakistan`;
+CREATE TABLE `pakistan` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1040,15 +733,8 @@ CREATE TABLE IF NOT EXISTS `pakistan` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `panama`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `panama` (
+DROP TABLE IF EXISTS `panama`;
+CREATE TABLE `panama` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1059,15 +745,8 @@ CREATE TABLE IF NOT EXISTS `panama` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `poland`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `poland` (
+DROP TABLE IF EXISTS `poland`;
+CREATE TABLE `poland` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1078,29 +757,15 @@ CREATE TABLE IF NOT EXISTS `poland` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `prefixes`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `prefixes` (
+DROP TABLE IF EXISTS `prefixes`;
+CREATE TABLE `prefixes` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
   `country` varchar(100) DEFAULT NULL,
   `last_registry_update` date DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `qatar`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `qatar` (
+DROP TABLE IF EXISTS `qatar`;
+CREATE TABLE `qatar` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1111,28 +776,14 @@ CREATE TABLE IF NOT EXISTS `qatar` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `registration_prefixes`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `registration_prefixes` (
+DROP TABLE IF EXISTS `registration_prefixes`;
+CREATE TABLE `registration_prefixes` (
   `Reg_Prefix` varchar(10) NOT NULL,
   `Country_of_Reg` varchar(255) NOT NULL,
   PRIMARY KEY (`Reg_Prefix`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `romania`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `romania` (
+DROP TABLE IF EXISTS `romania`;
+CREATE TABLE `romania` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1143,15 +794,8 @@ CREATE TABLE IF NOT EXISTS `romania` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `russia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `russia` (
+DROP TABLE IF EXISTS `russia`;
+CREATE TABLE `russia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1162,15 +806,8 @@ CREATE TABLE IF NOT EXISTS `russia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `san_marino`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `san_marino` (
+DROP TABLE IF EXISTS `san_marino`;
+CREATE TABLE `san_marino` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1181,15 +818,8 @@ CREATE TABLE IF NOT EXISTS `san_marino` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `saudi_arabia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `saudi_arabia` (
+DROP TABLE IF EXISTS `saudi_arabia`;
+CREATE TABLE `saudi_arabia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1200,28 +830,15 @@ CREATE TABLE IF NOT EXISTS `saudi_arabia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `settings`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `settings` (
+DROP TABLE IF EXISTS `settings`;
+CREATE TABLE `settings` (
   `id` int(11) NOT NULL DEFAULT 1,
   `show_disclaimer` tinyint(1) DEFAULT 1,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `slovakia`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `slovakia` (
+INSERT INTO `settings` (`id`, `show_disclaimer`) VALUES (1, 1);
+DROP TABLE IF EXISTS `slovakia`;
+CREATE TABLE `slovakia` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1232,15 +849,8 @@ CREATE TABLE IF NOT EXISTS `slovakia` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `south_africa`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `south_africa` (
+DROP TABLE IF EXISTS `south_africa`;
+CREATE TABLE `south_africa` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1251,15 +861,8 @@ CREATE TABLE IF NOT EXISTS `south_africa` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `south_korea`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `south_korea` (
+DROP TABLE IF EXISTS `south_korea`;
+CREATE TABLE `south_korea` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1270,15 +873,8 @@ CREATE TABLE IF NOT EXISTS `south_korea` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `spain`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `spain` (
+DROP TABLE IF EXISTS `spain`;
+CREATE TABLE `spain` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1289,15 +885,8 @@ CREATE TABLE IF NOT EXISTS `spain` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `suriname`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `suriname` (
+DROP TABLE IF EXISTS `suriname`;
+CREATE TABLE `suriname` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1308,15 +897,8 @@ CREATE TABLE IF NOT EXISTS `suriname` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `switzerland`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `switzerland` (
+DROP TABLE IF EXISTS `switzerland`;
+CREATE TABLE `switzerland` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1327,15 +909,8 @@ CREATE TABLE IF NOT EXISTS `switzerland` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `thailand`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `thailand` (
+DROP TABLE IF EXISTS `thailand`;
+CREATE TABLE `thailand` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1346,15 +921,8 @@ CREATE TABLE IF NOT EXISTS `thailand` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `turkey`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `turkey` (
+DROP TABLE IF EXISTS `turkey`;
+CREATE TABLE `turkey` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1365,15 +933,8 @@ CREATE TABLE IF NOT EXISTS `turkey` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `united_arab_emirates`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `united_arab_emirates` (
+DROP TABLE IF EXISTS `united_arab_emirates`;
+CREATE TABLE `united_arab_emirates` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1384,15 +945,8 @@ CREATE TABLE IF NOT EXISTS `united_arab_emirates` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `united_kingdom`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `united_kingdom` (
+DROP TABLE IF EXISTS `united_kingdom`;
+CREATE TABLE `united_kingdom` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1403,15 +957,8 @@ CREATE TABLE IF NOT EXISTS `united_kingdom` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `united_states`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `united_states` (
+DROP TABLE IF EXISTS `united_states`;
+CREATE TABLE `united_states` (
   `n_number` varchar(10) DEFAULT NULL,
   `serial_number` varchar(50) DEFAULT NULL,
   `mfr_mdl_code` varchar(10) DEFAULT NULL,
@@ -1427,15 +974,8 @@ CREATE TABLE IF NOT EXISTS `united_states` (
   `expiration_date` varchar(10) DEFAULT NULL,
   `unique_id` varchar(20) DEFAULT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Table structure for table `uruguay`
---
-
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8mb4 */;
-CREATE TABLE IF NOT EXISTS `uruguay` (
+DROP TABLE IF EXISTS `uruguay`;
+CREATE TABLE `uruguay` (
   `registration` varchar(20) NOT NULL,
   `model` varchar(100) DEFAULT NULL,
   `operator` varchar(100) DEFAULT NULL,
@@ -1446,17 +986,7 @@ CREATE TABLE IF NOT EXISTS `uruguay` (
   `valid_until` date DEFAULT NULL,
   PRIMARY KEY (`registration`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
--- Dumping events for database 'airtrack'
---
-
---
--- Dumping routines for database 'airtrack'
---
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
-
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
 /*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
@@ -1464,5 +994,3 @@ CREATE TABLE IF NOT EXISTS `uruguay` (
 /*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*M!100616 SET NOTE_VERBOSITY=@OLD_NOTE_VERBOSITY */;
-
--- Dump completed on 2025-12-26  4:18:14

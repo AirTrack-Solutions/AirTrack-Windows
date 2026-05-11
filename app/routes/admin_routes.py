@@ -1,5 +1,5 @@
 # AirTrack 1.0.0
-# Copyright (c) 2025 Trevor ("Subhuti"). All rights reserved.
+# Copyright (c) 2025 Trevor ('Subhuti'). All rights reserved.
 # SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
 
 # routes/admin_routes.py
@@ -8,33 +8,38 @@ from flask import (
     Blueprint,
     render_template,
     request,
+    flash,
+    redirect,
     url_for,
     jsonify,
     current_app,
 )
 
 from sqlalchemy import text
+
 from extensions import db
 
 import os
+
 import logging
+
 from datetime import datetime
 
 # ---------------------------------------------------------------------------
 # Update check — runs once when blueprint loads, client only
 # ---------------------------------------------------------------------------
 try:
-    if os.getenv("AIRTRACK_ROLE", "client").lower() == "client":
+    if os.getenv('AIRTRACK_ROLE', 'client').lower() == 'client':
         from utils.airtrack_updater import check_for_updates as _check_for_updates
         _update_check = _check_for_updates()
-        update_available = not _update_check.get("up_to_date", True)
+        update_available = not _update_check.get('up_to_date', True)
     else:
         update_available = None
 except Exception:
     update_available = None
 
 
-admin_bp = Blueprint("admin", __name__, url_prefix="/admin")
+admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
 def _endpoint_url(name: str) -> str:
@@ -49,11 +54,13 @@ def _endpoint_url(name: str) -> str:
 
 
 @admin_bp.route("/")
+
 def admin_dashboard():
 
     # -----------------------------
     # Stats
     # -----------------------------
+
     def _get_airtrack_stats():
         try:
             with db.engine.connect() as conn:
@@ -194,39 +201,39 @@ def admin_dashboard():
     # -----------------------------
     # Role / feature flags
     # -----------------------------
-    is_server = os.getenv("AIRTRACK_ROLE", "client").lower() == "server"
+    is_server = os.getenv('AIRTRACK_ROLE', 'client').lower() == 'server'
 
     show_update_button = (
         update_available is True
-        and "admin_tools.check_updates" in current_app.view_functions
-        and "admin_tools.run_updater" in current_app.view_functions
+        and 'admin_tools.check_updates' in current_app.view_functions
+        and 'admin_tools.run_updater' in current_app.view_functions
     )
 
     show_commit_push = (
         is_server
-        and "admin_tools.git_commit" in current_app.view_functions
-        and "admin_tools.git_push" in current_app.view_functions
+        and 'admin_tools.git_commit' in current_app.view_functions
+        and 'admin_tools.git_push' in current_app.view_functions
     )
 
-    AIRTRACK_SYNC_USER = os.getenv("AIRTRACK_SYNC_USER", "").lower()
+    AIRTRACK_SYNC_USER = os.getenv('AIRTRACK_SYNC_USER', '').lower()
 
-    show_sync_button = AIRTRACK_SYNC_USER == "trevor" and (
-        "admin_tools.run_file_sync" in current_app.view_functions
+    show_sync_button = AIRTRACK_SYNC_USER == 'trevor' and (
+        'admin_tools.run_file_sync' in current_app.view_functions
     )
 
     # -----------------------------
     # Safe endpoint URLs
     # -----------------------------
     airtrack_urls = {
-        "git_commit": _endpoint_url("admin_tools.git_commit"),
-        "git_push": _endpoint_url("admin_tools.git_push"),
-        "check_updates": _endpoint_url("admin_tools.check_updates"),
-        "run_updater": _endpoint_url("admin_tools.run_updater"),
-        "housekeeping": _endpoint_url("admin_tools.housekeeping"),
+        "git_commit": _endpoint_url('admin_tools.git_commit'),
+        "git_push": _endpoint_url('admin_tools.git_push'),
+        "check_updates": _endpoint_url('admin_tools.check_updates'),
+        "run_updater": _endpoint_url('admin_tools.run_updater'),
+        "housekeeping": _endpoint_url('admin_tools.housekeeping'),
     }
 
     return render_template(
-        "admin.html",
+        'admin.html',
         stats=stats,
         backup_files=backup_files,
         show_update_button=show_update_button,
@@ -238,84 +245,61 @@ def admin_dashboard():
     )
 
 
-@admin_bp.route("/settings", methods=["GET"])
+@admin_bp.route('/settings', methods=['GET'])
+
 def admin_settings():
-
-    rows = db.session.execute(
-        text(
-            """
-            SELECT SettingKey, SettingValue
-            FROM app_settings
-            WHERE SettingKey IN ('FirstName','LastName','Callsign')
-            """
-        )
-    ).mappings().all()
-
-    settings = {row["SettingKey"]: row["SettingValue"] for row in rows}
-
-    return render_template(
-        "admin_settings.html",
-        settings=settings,
-    )
+    # Settings live in the admin.html modal — redirect there
+    return redirect(url_for('admin.admin_dashboard'))
 
 
-@admin_bp.route("/save_settings", methods=["POST"])
+@admin_bp.route('/save_settings', methods=['POST'])
+
 def save_settings():
-    """
-    Accept either JSON or form-encoded POST and persist
-    first_name / last_name / callsign into app_settings.
-    """
     try:
-        data = request.get_json(silent=True)
-        if data is None:
-            data = {
-                "first_name": request.form.get("first_name", ""),
-                "last_name":  request.form.get("last_name",  ""),
-                "callsign":   request.form.get("callsign",   ""),
-            }
+        data = request.get_json(silent=True) or {}
+        first_name = (data.get("first_name") or request.form.get("first_name", "")).strip()
+        last_name = (data.get("last_name") or request.form.get("last_name", "")).strip()
+        callsign = (data.get("callsign") or request.form.get("callsign", "")).strip()
 
-        # Map incoming keys → DB SettingKey names
-        key_map = {
-            "first_name": "FirstName",
-            "last_name":  "LastName",
-            "callsign":   "Callsign",
-        }
+        for key, value in [
+            ("FirstName", first_name),
+            ("LastName", last_name),
+            ("Callsign", callsign),
+        ]:
+            db.session.execute(
+                text(
+                    """
+                    INSERT INTO app_settings (SettingKey, SettingValue)
+                    VALUES (:key, :value)
+                    ON DUPLICATE KEY UPDATE
+                        SettingValue = VALUES(SettingValue)
+                    """
+                ),
+                {"key": key, "value": value},
+            )
 
-        with db.engine.begin() as conn:
-            for field, db_key in key_map.items():
-                value = (data.get(field) or "").strip()
-                conn.execute(
-                    text(
-                        """
-                        INSERT INTO app_settings (SettingKey, SettingValue)
-                        VALUES (:key, :value)
-                        ON DUPLICATE KEY UPDATE
-                            SettingValue = VALUES(SettingValue)
-                        """
-                    ),
-                    {"key": db_key, "value": value},
-                )
-
+        db.session.commit()
         return jsonify({"success": True})
 
     except Exception as e:
-        current_app.logger.exception("save_settings failed")
+        current_app.logger.exception('save_settings failed')
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@admin_bp.route("/update_app_settings", methods=["POST"])
+@admin_bp.route('/update_app_settings', methods=['POST'])
+
 def update_app_settings():
 
     try:
         data = request.get_json() or {}
 
-        theme = (data.get("theme") or "default").strip()
-        timezone = (data.get("timezone") or "").strip()
+        theme = (data.get("theme") or 'default').strip()
+        timezone = (data.get("timezone") or '').strip()
 
         with db.engine.begin() as conn:
             for k, v in (
-                ("timezone", timezone),
-                ("Theme", theme),
+                ('timezone', timezone),
+                ('Theme', theme),
             ):
                 conn.execute(
                     text(
@@ -326,16 +310,17 @@ def update_app_settings():
                             SettingValue = VALUES(SettingValue)
                         """
                     ),
-                    {"k": k, "v": v},
+                    {'k': k, 'v': v},
                 )
 
         return jsonify({"success": True})
 
     except Exception as e:
-        current_app.logger.exception("update_app_settings failed")
+        current_app.logger.exception('update_app_settings failed')
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@admin_bp.route("/user_guide")
+@admin_bp.route('/user_guide')
+
 def user_guide():
-    return render_template("user_guide.html")
+    return render_template('user_guide.html')

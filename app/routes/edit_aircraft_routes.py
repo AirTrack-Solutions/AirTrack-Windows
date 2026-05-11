@@ -194,6 +194,15 @@ def edit_aircraft(aircraft_id):
                     },
                 )
 
+                # Stamp Aircraft_Updated so Last Seen reflects this sighting
+                db.session.execute(
+                    text(
+                        "UPDATE aircraft SET Aircraft_Updated = :ts "
+                        "WHERE AircraftID = :id"
+                    ),
+                    {"ts": now, "id": aircraft_id},
+                )
+
                 db.session.commit()
                 flash("New flight recorded.", "success")
                 return redirect(url_for("aircraft.aircraft_info", aircraft_id=aircraft_id))

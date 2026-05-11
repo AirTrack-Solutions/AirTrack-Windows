@@ -1,5 +1,5 @@
 # AirTrack 1.0.0
-# Copyright (c) 2025 Trevor ("Subhuti"). All rights reserved.
+# Copyright (c) 2025 Trevor ('Subhuti'). All rights reserved.
 # SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
 
 import json
@@ -215,22 +215,11 @@ def whitelist_link():
     return redirect(url_for('admin_tools.broken_links'))
 
 
-@admin_tools_bp.route("/run_updater", methods=["GET", "POST"])
-
+@admin_tools_bp.route('/run_updater', methods=['GET', 'POST'])
 def run_updater():
+    return _err("This updater has been retired. Use docker compose to update.")
 
-    if os.getenv("AIRTRACK_ROLE", "client") != "client":
-        return _err("Updates are disabled on server installations.")
-
-    try:
-        from utils.airtrack_updater import run_full_update
-        result = run_full_update()
-        return _ok(**result)
-
-    except Exception as e:
-        return _err(f"❌ Updater failed: {e}")
-
-@admin_tools_bp.route("/git_commit", methods=["POST"])
+@admin_tools_bp.route('/git_commit', methods=['POST'])
 @require_server
 
 def git_commit():
@@ -240,7 +229,7 @@ def git_commit():
     _ensure_identity(repo)
 
     data = request.get_json(silent=True) or {}
-    msg = (data.get("message") or request.form.get("message") or "").strip()
+    msg = (data.get('message') or request.form.get('message') or '').strip()
     if not msg:
         return _err("⚠️ Commit message required.")
 
@@ -249,14 +238,14 @@ def git_commit():
         rc, out, err = _run_cmd(f'git commit -m "{msg}"', cwd=repo)
         if rc != 0:
             if "nothing to commit" in out or "nothing to commit" in err:
-                return _ok(status="noop", detail="ℹ️ Nothing to commit.")
+                return _ok(status='noop', detail='ℹ️ Nothing to commit.')
             return _err("❌ Git commit failed.", detail=err or out)
-        return _ok(status="ok", detail="✅ Commit successful.")
+        return _ok(status='ok', detail='✅ Commit successful.')
     except Exception as e:
         return _err(f"❌ Commit failed: {e}")
 
 
-@admin_tools_bp.route("/git_push", methods=["POST"])
+@admin_tools_bp.route('/git_push', methods=['POST'])
 @require_server
 
 def git_push():
@@ -279,6 +268,19 @@ def git_push():
 def list_themes():
     themes = scan_all()
     return jsonify(themes)
+
+
+@admin_tools_bp.post("/rescan_themes")
+
+def rescan_themes():
+    """Force a full theme rescan, bypassing the staleness check."""
+    try:
+        from utils.theme_scanner import scan_and_generate
+        themes = scan_and_generate()
+        return _ok(status="ok", count=len(themes))
+    except Exception as e:
+        logging.exception("rescan_themes failed")
+        return _err(f"rescan failed: {e}")
 
 
 @admin_tools_bp.route("/export_db_mobile")
@@ -347,6 +349,7 @@ def housekeeping():
 
 def shutdown():
     try:
+
         def _kill():
             time.sleep(0.5)
             os.kill(os.getppid(), signal.SIGTERM)
@@ -568,6 +571,7 @@ def protected_ping():
 
 
 @admin_tools_bp.route("/update_municipality", methods=["POST"])
+
 def update_municipality():
     """Quick-fix endpoint to correct the municipality/city field on an airport record."""
     data = request.get_json(silent=True) or {}
@@ -590,6 +594,7 @@ def update_municipality():
 
 
 @admin_tools_bp.route("/check_updates", methods=["GET", "POST"])
+
 def check_updates():
     try:
         from utils.airtrack_updater import check_for_updates
@@ -605,3 +610,4 @@ def check_updates():
         )
     except Exception as e:
         return _err(f"❌ Update check failed: {e}")
+    

@@ -56,7 +56,7 @@ def get_country_data():
         "croatia": "hr.png",
         "cuba": "cu.png",
         "cyprus": "cy.png",
-        "czech republic": "cz.png",
+        "czechia": "cz.png",
         "denmark": "dk.png",
         "djibouti": "dj.png",
         "dominica": "dm.png",

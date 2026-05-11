@@ -1,19 +1,117 @@
 # AirTrack 1.0.0
-# Copyright (c) 2025 Trevor (“Subhuti”). All rights reserved.
-# SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
+# Copyright (c) 2025 AirTrack Solutions (ABN 70 472 536 433). All rights reserved.
+# SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary
 
-
-
+import os
+import json
+import urllib.request
+import urllib.error
 from datetime import date, datetime
 
 import pytz
-from flask import Blueprint, flash, redirect, render_template, request, url_for
+from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
 from sqlalchemy import text
 
 from extensions import db
+from security.guards import require_server
 from utils.settings_utils import get_current_timezone
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+# -------------------------------------------------
+# Database schema description sent to the API
+# -------------------------------------------------
+DB_SCHEMA = """
+You are an expert assistant for AirTrack, a hobbyist aircraft spotting logbook application.
+The MariaDB database has these tables and columns:
+
+aircraft (main spotting logbook):
+  AircraftID (int PK), AirlineID (int FK->airlines), Registration (varchar),
+  FlightNumber (varchar), Aircraft_Type (varchar), MSN (varchar), Category (varchar),
+  Country_of_Reg (varchar), Country_Flag (varchar), Times_Seen (int),
+  Manufacture_Year (year), Manufacture_Month (tinyint), ICAO_Address (varchar),
+  Spotted_At (varchar), Notes (text), Departure (varchar ICAO), Arrival (varchar ICAO),
+  Age (int), Sightings (int default 1), Engine_Type (varchar), Orphaned (tinyint default 0),
+  Aircraft_Image (varchar, NULL=no image, NOT NULL=has primary image),
+  First_Sighted (datetime), Aircraft_Updated (timestamp), Timestamp (datetime)
+
+airlines:
+  AirlineID (int PK), AirlineName (varchar), Country (varchar),
+  IATA (varchar), ICAO (varchar), Callsign (varchar), Logo (varchar),
+  Last_Updated (timestamp)
+
+flights (every sighting logged):
+  FlightID (int PK), AircraftID (int), AirlineID (int FK->airlines),
+  FlightNumber (varchar), Registration (varchar), MSN (varchar),
+  Aircraft_Type (varchar), Times_Seen (int), Departure (varchar ICAO),
+  Arrival (varchar ICAO), Country_of_Reg (varchar), Country_Flag (varchar),
+  Flight_Image (varchar), Notes (text), Spotted_At (varchar),
+  Timestamp (datetime), Flight_Updated (timestamp)
+
+airports:
+  id (int PK), ICAO (varchar), IATA (varchar), AirportName (varchar),
+  Country (varchar), municipality (varchar), latitude_deg (decimal),
+  longitude_deg (decimal), elevation_ft (int), type (varchar)
+
+aircraft_images (additional images 2-5 per aircraft):
+  ImageID (int PK), AircraftID (int FK->aircraft), Registration (varchar),
+  Filename (varchar), Image_Number (tinyint default 2), Uploaded_At (datetime)
+
+aircraft_owners (ownership history):
+  OwnerID (int PK), AircraftID (int FK->aircraft), AirlineID (int FK->airlines),
+  From_Date (date), To_Date (date nullable), Notes (varchar)
+
+app_settings:
+  SettingKey (varchar PK), SettingValue (varchar)
+
+registration_prefixes (ICAO prefix to country mapping):
+  Reg_Prefix (varchar PK), Country_of_Reg (varchar)
+
+Country registry tables (real-world aircraft registries for cross-referencing):
+  australia: registration, aircraftmanufacturer, aircraftmodel, msn, yearmanu,
+             registeredowner, operatorname, icaotypedesig
+  united_kingdom, united_states (n_number), new_zealand, canada, germany, france,
+  japan, china, south_korea, singapore, thailand, indonesia, india (not present),
+  and many others — all have: registration, model, operator, serial, icao_address
+  united_states uses n_number instead of registration
+
+IMPORTANT QUERY GUIDANCE:
+- Total aircraft count: SELECT COUNT(*) FROM aircraft
+- Total flights logged: SELECT COUNT(*) FROM flights
+- Total airlines: SELECT COUNT(*) FROM airlines
+- Aircraft WITH a primary image: SELECT COUNT(*) FROM aircraft WHERE Aircraft_Image IS NOT NULL AND Aircraft_Image != ''
+- Aircraft WITHOUT any image: SELECT COUNT(*) FROM aircraft WHERE (Aircraft_Image IS NULL OR Aircraft_Image = '') AND AircraftID NOT IN (SELECT DISTINCT AircraftID FROM aircraft_images)
+- Total images: SELECT (SELECT COUNT(*) FROM aircraft WHERE Aircraft_Image IS NOT NULL AND Aircraft_Image != '') + (SELECT COUNT(*) FROM aircraft_images) AS TotalImages
+- Primary image is Aircraft_Image on aircraft table; extra images (2-5) are in aircraft_images
+- Never invent column names — only use columns listed above
+- For counting, prefer simple COUNT(*) over complex JOINs
+- Cross-reference with country registry tables to enrich answers (e.g. JOIN australia ON aircraft.Registration = australia.registration)
+- When asked about a specific registration, check both aircraft table and relevant country registry
+
+The user asks natural language questions about their aircraft spotting data.
+You must respond with a JSON object in one of two formats:
+
+Format 1 - for questions that need a database query:
+{
+  "type": "query",
+  "sql": "SELECT ... FROM ... WHERE ...",
+  "explanation": "Plain English explanation of what this query does"
+}
+
+Format 2 - for questions you can answer without a query (general knowledge about aircraft types, airlines, etc):
+{
+  "type": "answer",
+  "text": "Your plain English answer here"
+}
+
+Rules:
+- Only use SELECT statements, never INSERT/UPDATE/DELETE/DROP
+- Always use table aliases for clarity
+- Limit results to 50 rows maximum unless the user asks for more
+- For date questions, use MySQL date functions
+- If unsure, return a query that gets relevant data and explain what it shows
+- Respond ONLY with the JSON object, no markdown, no explanation outside the JSON
+"""
 
 
 # -------------------------------------------------
@@ -35,12 +133,7 @@ def render_report(title, columns, data):
 
 
 def safe_query(sql, params=None, title="", columns=None):
-    """Execute a safe DB query with optional parameters and render a report.
-
-    - Guards against SQL errors
-    - Normalizes First_Sighted timestamps
-    - Uses UTC→local timezone conversion
-    """
+    """Execute a safe DB query with optional parameters and render a report."""
     try:
         result = db.session.execute(text(sql), params or {})
         rows = [dict(row._mapping) for row in result.fetchall()]
@@ -60,6 +153,103 @@ def safe_query(sql, params=None, title="", columns=None):
         print(f"❌ Error in report '{title}': {e}")
         flash("Report failed to generate.", "danger")
         return render_report(title, columns or [], [])
+
+
+# -------------------------------------------------
+# Smart Ask route
+# -------------------------------------------------
+@reports_bp.route("/ask", methods=["POST"])
+@require_server
+def ask():
+    """Natural language question → Anthropic API → SQL or plain answer."""
+    question = (request.json or {}).get("question", "").strip()
+    if not question:
+        return jsonify({"type": "error", "text": "No question provided."}), 400
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return jsonify({"type": "error", "text": "Anthropic API key not configured."}), 500
+
+    # Call Anthropic API
+    try:
+        payload = json.dumps({
+            "model": "claude-haiku-4-5-20251001",
+            "max_tokens": 1024,
+            "system": DB_SCHEMA,
+            "messages": [{"role": "user", "content": question}]
+        }).encode("utf-8")
+
+        req = urllib.request.Request(
+            "https://api.anthropic.com/v1/messages",
+            data=payload,
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01"
+            },
+            method="POST"
+        )
+
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            response_data = json.loads(resp.read().decode("utf-8"))
+
+        raw = response_data["content"][0]["text"].strip()
+
+        # Strip markdown fences if present
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+            raw = raw.strip()
+
+        parsed = json.loads(raw)
+
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8")
+        return jsonify({"type": "error", "text": f"API error {e.code}: {error_body}"}), 500
+    except Exception as e:
+        return jsonify({"type": "error", "text": f"Failed to contact Anthropic API: {e}"}), 500
+
+    # Handle plain answer
+    if parsed.get("type") == "answer":
+        return jsonify({"type": "answer", "text": parsed.get("text", "No answer returned.")})
+
+    # Handle SQL query
+    if parsed.get("type") == "query":
+        sql = parsed.get("sql", "").strip()
+        explanation = parsed.get("explanation", "")
+
+        # Safety check — only allow SELECT
+        if not sql.upper().startswith("SELECT"):
+            return jsonify({"type": "error", "text": "Only SELECT queries are permitted."})
+
+        try:
+            result = db.session.execute(text(sql))
+            rows = [dict(row._mapping) for row in result.fetchall()]
+
+            # Normalise datetimes
+            timezone = get_current_timezone()
+            for row in rows:
+                for key, val in row.items():
+                    if isinstance(val, datetime):
+                        converted = _to_tz(val, timezone)
+                        row[key] = converted.strftime("%d-%m-%Y %H:%M:%S") if converted else "Unknown"
+                    elif isinstance(val, date):
+                        row[key] = val.strftime("%d-%m-%Y")
+
+            columns = list(rows[0].keys()) if rows else []
+
+            return jsonify({
+                "type": "query",
+                "explanation": explanation,
+                "columns": columns,
+                "rows": rows
+            })
+
+        except Exception as e:
+            return jsonify({"type": "error", "text": f"Query failed: {e}"}), 500
+
+    return jsonify({"type": "error", "text": "Unexpected response from AI."}), 500
 
 
 # -------------------------------------------------
@@ -85,6 +275,7 @@ def reports_index():
         "most_common_models": "reports.most_common_models",
         "oldest_aircraft": "reports.oldest_aircraft",
         "different_aircraft": "reports.different_aircraft_report",
+        "orphaned_aircraft": "reports.orphaned_aircraft",
     }
     endpoint = routes.get(name, "reports.report_logged_airports")
     return redirect(url_for(endpoint))
@@ -291,7 +482,21 @@ def different_aircraft_report():
     )
 
 
+@reports_bp.route("/orphaned_aircraft", methods=["GET"])
+def orphaned_aircraft():
+    return safe_query(
+        """
+        SELECT ac.Registration, ac.Aircraft_Type, ac.Country_of_Reg, ac.First_Sighted
+        FROM aircraft ac
+        LEFT JOIN airlines al ON ac.AirlineID = al.AirlineID
+        WHERE ac.AirlineID IS NULL OR al.AirlineID IS NULL
+        ORDER BY ac.Registration ASC
+        """,
+        title="Orphaned Aircraft (No Airline Assigned)",
+        columns=["Registration", "Aircraft_Type", "Country_of_Reg", "First_Sighted"],
+    )
+
+
 @reports_bp.route("/support")
 def support():
     return render_template("support.html")
-

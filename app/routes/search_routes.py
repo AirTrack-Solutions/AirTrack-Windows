@@ -7,25 +7,32 @@
 from datetime import date, datetime
 
 import pytz
+
 import logging
+
 from extensions import db
+
 from flask import Blueprint, render_template, request
+
 from sqlalchemy import text
+
 from utils.country_flags import get_country_flag
+
 from utils.settings_utils import get_current_timezone
 
-search_unified_bp = Blueprint("search_unified", __name__)
+search_unified_bp = Blueprint('search_unified', __name__)
 
-@search_unified_bp.route("/search_unified")
+@search_unified_bp.route('/search_unified')
+
 def search_unified():
     from flask import current_app
     current_app.logger.info(
         f"🔍 search_unified called: type={request.args.get('type')}, search={request.args.get('search')}"
     )
 
-    search_type = (request.args.get("type") or "").strip().lower()
-    search_query = (request.args.get("search") or "").strip()
-    page = int(request.args.get("page", 1))
+    search_type = (request.args.get('type') or '').strip().lower()
+    search_query = (request.args.get('search') or '').strip()
+    page = int(request.args.get('page', 1))
     per_page = 50
     offset = (page - 1) * per_page
     filtered_data = []
@@ -35,7 +42,7 @@ def search_unified():
     # ============================================================
     # Aircraft search FIXED
     # ============================================================
-    if search_type in ("aircraft", "aircrafts"):
+    if search_type in ('aircraft', 'aircrafts'):
         count_result = db.session.execute(
             text("""
                 SELECT COUNT(*) FROM aircraft a
@@ -80,7 +87,7 @@ def search_unified():
         for row in result:
             aircraft = dict(row._mapping)
 
-            logging.warning(
+            logging.debug(
                 f"🛫 Airline data check: ID={aircraft.get('AirlineID')}, Name={aircraft.get('AirlineName')}"
             )
 

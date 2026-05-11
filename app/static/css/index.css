@@ -100,7 +100,6 @@ html {
 
     margin: 0;
 
-    position: relative;
     top: 2px;   /* halved from 4px */
 
     font-weight: bold;
@@ -177,8 +176,6 @@ html {
 
     text-align: center;
 
-    position: relative;
-    top: 8px;
 }
 
 .index-filter-item button {
