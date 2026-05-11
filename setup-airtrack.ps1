@@ -58,6 +58,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # ── Clone or update ───────────────────────────────────────────────────────────
+$freshInstall = $false
+
 if (Test-Path (Join-Path $installDir ".git")) {
     Write-Host "  Existing installation found. Updating..."
     Set-Location $installDir
@@ -66,8 +68,11 @@ if (Test-Path (Join-Path $installDir ".git")) {
     if (Test-Path $installDir) {
         $choice = Read-Host "  Folder already exists. Delete and reinstall? (Y/N)"
         if ($choice -ne "Y") { Write-Host "  Install aborted."; exit 0 }
+        Write-Host "  Removing old installation files..."
+        Set-Location $env:USERPROFILE
         Remove-Item -Recurse -Force $installDir
     }
+    $freshInstall = $true
     Write-Host "  Cloning AirTrack..."
     git clone $repo $installDir
     Set-Location $installDir
@@ -107,6 +112,12 @@ AIRTRACK_MAX_ARCHIVES=7
     Write-Host "  Created .env with secure credentials."
 } else {
     Write-Host "  Existing .env kept."
+}
+
+# ── On fresh install, remove any stale DB volumes from a previous attempt ─────
+if ($freshInstall) {
+    Write-Host "  Clearing any old database volumes..."
+    docker compose -f $compose down -v 2>&1 | Out-Null
 }
 
 # ── Build and start ───────────────────────────────────────────────────────────

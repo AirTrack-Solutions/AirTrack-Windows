@@ -125,7 +125,7 @@ docker-compose.override.yml
 # ---------------------------
 
 app/app_data/
-app/config/
+app/config/*.lic
 app_data/
 
 # ---------------------------
