@@ -1,0 +1,94 @@
+Hi [Name],
+
+Welcome to AirTrack for Windows! Follow the steps below to get up and running.
+Your license file is attached — you'll need it in Step 4.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+STEP 1 — INSTALL DOCKER DESKTOP
+━━━━━━━━━━━━━━━━━━━━━━━
+
+AirTrack runs inside Docker. You need to install it before anything else.
+
+Download and install Docker Desktop from:
+  https://www.docker.com/products/docker-desktop
+
+Accept all defaults during installation. When it finishes, open Docker Desktop
+and wait for it to fully start — the whale icon in your taskbar will stop
+animating when it is ready.
+
+IMPORTANT: Docker Desktop must be running whenever you use AirTrack.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+STEP 2 — INSTALL GIT
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Download and install Git for Windows from:
+  https://git-scm.com/download/win
+
+Accept all defaults. You do not need to change any settings.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+STEP 3 — INSTALL AIRTRACK
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Right-click the Windows Start button and choose "Windows PowerShell (Admin)"
+or "Terminal (Admin)". Then paste this single command and press Enter:
+
+  irm https://raw.githubusercontent.com/Subhuti/AirTrack-Windows/main/setup-airtrack.ps1 | iex
+
+The installer will:
+  • Clone AirTrack to your computer
+  • Configure your database with a secure random password
+  • Build and start AirTrack automatically
+  • Open your browser to http://localhost:5000
+
+This may take several minutes the first time — Docker is downloading and
+building everything it needs. Please be patient.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+STEP 4 — INSTALL YOUR LICENSE
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Copy the attached license.lic file into this folder:
+
+  C:\Users\[YourName]\docker\AirTrack-Windows\app\config\
+
+You can open this folder by pressing Windows + R, typing the path above
+(replacing [YourName] with your Windows username), and pressing Enter.
+
+Then restart AirTrack:
+
+  1. Double-click  stop.bat  in the AirTrack-Windows folder
+  2. Double-click  start_airtrack.bat  to start it again
+
+Refresh your browser and AirTrack will be fully licensed.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+STEP 5 — STARTING AND STOPPING
+━━━━━━━━━━━━━━━━━━━━━━━
+
+A desktop shortcut is created automatically during installation.
+Double-click it to open AirTrack in your browser at any time.
+
+If AirTrack is not running, use these files in the AirTrack-Windows folder:
+
+  start_airtrack.bat  — starts AirTrack and opens your browser
+  stop.bat            — stops AirTrack
+
+AirTrack will remember everything between restarts. Your data is safe.
+
+━━━━━━━━━━━━━━━━━━━━━━━
+NEED HELP?
+━━━━━━━━━━━━━━━━━━━━━━━
+
+Documentation and FAQs:
+  https://www.airtracksolutions.com/faqs.html
+
+Contact us directly:
+  https://www.airtracksolutions.com/contact.html
+
+Happy spotting!
+
+Trevor
+AirTrack Solutions
+https://www.airtracksolutions.com

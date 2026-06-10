@@ -165,3 +165,11 @@ tmp/
 
 app/static/uploads/
 install_airtrack.sh
+
+# Runtime config (contains DB credentials)
+app/config.json
+
+# Registry data packs — distributed via Wombat, not git
+app/*.sql
+app/*.zip
+app/*.bak.sql
