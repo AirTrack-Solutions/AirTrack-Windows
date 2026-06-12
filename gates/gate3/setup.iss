@@ -78,7 +78,7 @@ var
   LicSrc, LicDest: String;
   IsFreshInstall: Boolean;
 begin
-  { ssInstall fires before files are copied - write helper scripts to {tmp} }
+  // ssInstall fires before files are copied - write helper scripts to {tmp}
   if CurStep = ssInstall then
   begin
     CfgFile := ExpandConstant('{src}\airtrack.cfg');
