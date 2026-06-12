@@ -173,3 +173,7 @@ app/config.json
 app/*.sql
 app/*.zip
 app/*.bak.sql
+
+# Installer build files
+!gates/gate3/setup.iss
+!gates/gate3/wait_for_db.ps1
