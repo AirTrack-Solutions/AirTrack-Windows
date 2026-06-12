@@ -59,9 +59,9 @@ def _extract_table_name(sql_file: Path) -> str | None:
     try:
         with sql_file.open('r', encoding='utf-8', errors='replace') as fh:
             for line in fh:
-                m = re.search(r'INSERT INTO `([^`]+)`', line)
+                m = re.search(r'INSERT(?:\s+IGNORE)?\s+INTO\s+(?:`([^`]+)`|([a-z_]+))\s*\(', line)
                 if m:
-                    return m.group(1)
+                    return m.group(1) or m.group(2)
     except Exception:
         pass
     return None
@@ -194,38 +194,146 @@ def scan_registries() -> list[dict]:
 
 # ── Routes ───────────────────────────────────────────────────────────────────
 
+def _server_url() -> str | None:
+    """Return the configured server base URL, or None if not set."""
+    url = os.getenv('AIRTRACK_SERVER_URL', '').rstrip('/')
+    return url or None
+
+
+def _fetch_manifest(server_url: str) -> list[dict]:
+    """Fetch available registries from the server manifest endpoint."""
+    import urllib.request, json as _json
+    try:
+        with urllib.request.urlopen(f'{server_url}/admin/registries/manifest', timeout=10) as resp:
+            return _json.loads(resp.read().decode('utf-8'))
+    except Exception as exc:
+        logging.warning(f'Failed to fetch registry manifest from {server_url}: {exc}')
+        return []
+
+
 @registry_bp.route('/')
 def registry_list():
+    is_client = os.getenv('AIRTRACK_ROLE', 'server').lower() == 'client'
+    server_url = _server_url()
+
+    if is_client:
+        # Client mode: fetch available registries from server
+        available = _fetch_manifest(server_url) if server_url else []
+        # Annotate each with local import status
+        for r in available:
+            imported = _table_exists(r['table'])
+            r['imported']  = imported
+            r['row_count'] = _row_count(r['table']) if imported else 0
+        imported_count = sum(1 for r in available if r['imported'])
+        total_records  = sum(r['row_count'] for r in available if r['imported'])
+        today_count    = _imports_today()
+        return render_template(
+            'admin_registries.html',
+            registries=available,
+            imported_count=imported_count,
+            total_count=len(available),
+            total_records=total_records,
+            imports_today=today_count,
+            daily_limit=DAILY_IMPORT_LIMIT,
+            is_client=True,
+            server_url=server_url,
+            server_reachable=bool(available or server_url is None),
+        )
+
+    # Server mode: scan local files as before
     registries = scan_registries()
     imported_count = sum(1 for r in registries if r['imported'])
+    total_records  = sum(r['row_count'] for r in registries if r['imported'])
     today_count = _imports_today()
     return render_template(
         'admin_registries.html',
         registries=registries,
         imported_count=imported_count,
         total_count=len(registries),
+        total_records=total_records,
         imports_today=today_count,
         daily_limit=DAILY_IMPORT_LIMIT,
+        is_client=False,
+        server_url=None,
+        server_reachable=True,
     )
 
 
 @registry_bp.route('/import/<country>', methods=['POST'])
 def import_registry(country):
+    is_client = os.getenv('AIRTRACK_ROLE', 'server').lower() == 'client'
+
+    # ── Daily limit check ────────────────────────────────────────────────────
+    today_count = _imports_today()
+    if today_count >= DAILY_IMPORT_LIMIT:
+        return jsonify({
+            'status': 'error',
+            'detail': f'Daily limit of {DAILY_IMPORT_LIMIT} imports reached — come back tomorrow!',
+            'quota':  {'used': today_count, 'limit': DAILY_IMPORT_LIMIT, 'remaining': 0},
+        }), 429
+
+    db_host     = os.getenv('DB_HOST', 'airtrack-db')
+    db_user     = os.getenv('DB_USER', 'airtrack')
+    db_password = os.getenv('DB_PASSWORD', '')
+    db_name     = os.getenv('DB_NAME', 'airtrack')
+
+    if is_client:
+        # Client mode: download SQL from server, pipe into local DB
+        import urllib.request as _ur, tempfile, io
+        server_url = _server_url()
+        if not server_url:
+            return jsonify({'status': 'error', 'detail': 'AIRTRACK_SERVER_URL not configured'}), 500
+
+        # First fetch the manifest to get the table name
+        manifest = _fetch_manifest(server_url)
+        entry = next((r for r in manifest if r['dir'] == country), None)
+        if not entry:
+            return jsonify({'status': 'error', 'detail': f'Registry not found on server: {country}'}), 404
+
+        table_name = entry['table']
+
+        try:
+            ensure_country_table(db, table_name)
+
+            sql_url = f'{server_url}/admin/registries/sql/{country}'
+            with _ur.urlopen(sql_url, timeout=120) as resp:
+                sql_bytes = resp.read()
+
+            result = subprocess.run(
+                ['mysql', '-h', db_host, f'-u{db_user}', f'-p{db_password}', db_name],
+                input=sql_bytes.decode('utf-8', errors='replace'),
+                capture_output=True,
+                text=True,
+                timeout=600,
+            )
+
+            if result.returncode != 0:
+                logging.error(f"Client registry import failed for {country}: {result.stderr}")
+                return jsonify({'status': 'error', 'detail': result.stderr or 'Import failed'}), 500
+
+            rows = _row_count(table_name)
+            _record_import()
+            new_count = today_count + 1
+            remaining = max(0, DAILY_IMPORT_LIMIT - new_count)
+            return jsonify({
+                'status':    'ok',
+                'detail':    f'Imported {rows:,} records',
+                'row_count': rows,
+                'quota':     {'used': new_count, 'limit': DAILY_IMPORT_LIMIT, 'remaining': remaining},
+            })
+
+        except subprocess.TimeoutExpired:
+            return jsonify({'status': 'error', 'detail': 'Import timed out (>10 min)'}), 500
+        except Exception as e:
+            logging.exception(f"Client registry import error for {country}")
+            return jsonify({'status': 'error', 'detail': str(e)}), 500
+
+    # ── Server mode: import from local SQL file ───────────────────────────────
     reg_dir = _registries_dir()
     country_dir = reg_dir / country
 
     if not country_dir.is_dir():
         return jsonify({'status': 'error', 'detail': f'Not found: {country}'}), 404
-
-    # ── Daily limit check ────────────────────────────────────────────────────
-    today_count = _imports_today()
-    if today_count >= DAILY_IMPORT_LIMIT:
-        remaining = 0
-        return jsonify({
-            'status':    'error',
-            'detail':    f'Daily limit of {DAILY_IMPORT_LIMIT} imports reached — come back tomorrow!',
-            'quota':     {'used': today_count, 'limit': DAILY_IMPORT_LIMIT, 'remaining': remaining},
-        }), 429
 
     sql_file = _find_sql_file(country_dir)
     if not sql_file:
@@ -236,13 +344,7 @@ def import_registry(country):
         return jsonify({'status': 'error', 'detail': 'Could not determine table name'}), 400
 
     try:
-        # Ensure the table schema exists before importing
         ensure_country_table(db, table_name)
-
-        db_host     = os.getenv('DB_HOST', 'airtrack-db')
-        db_user     = os.getenv('DB_USER', 'airtrack')
-        db_password = os.getenv('DB_PASSWORD', '')
-        db_name     = os.getenv('DB_NAME', 'airtrack')
 
         with sql_file.open('r', encoding='utf-8', errors='replace') as fh:
             result = subprocess.run(
@@ -260,7 +362,7 @@ def import_registry(country):
         rows = _row_count(table_name)
         _record_import()
         new_count = today_count + 1
-        remaining  = max(0, DAILY_IMPORT_LIMIT - new_count)
+        remaining = max(0, DAILY_IMPORT_LIMIT - new_count)
         return jsonify({
             'status':    'ok',
             'detail':    f'Imported {rows:,} records',
@@ -297,3 +399,334 @@ def remove_registry(country):
     except Exception as e:
         logging.exception(f"Registry remove error for {country}")
         return jsonify({'status': 'error', 'detail': str(e)}), 500
+
+
+# ── Registry Tracker ──────────────────────────────────────────────────────────
+
+# Canonical ICAO registration prefix list.
+# (prefix, display_name, dir_name)
+# dir_name must match the Title_Case folder name used in the registries directory.
+ICAO_COUNTRIES = [
+    ('A2',        'Botswana',                       'Botswana'),
+    ('A3',        'Tonga',                          'Tonga'),
+    ('A40',       'Oman',                           'Oman'),
+    ('A5',        'Bhutan',                         'Bhutan'),
+    ('A6',        'United Arab Emirates',            'United_Arab_Emirates'),
+    ('A7',        'Qatar',                          'Qatar'),
+    ('A9C',       'Bahrain',                        'Bahrain'),
+    ('AP',        'Pakistan',                       'Pakistan'),
+    ('B',         'China',                          'China'),
+    ('B-H',       'Hong Kong',                      'Hong_Kong'),
+    ('B-M',       'Macau',                          'Macau'),
+    ('C',         'Canada',                         'Canada'),
+    ('C6',        'Bahamas',                        'Bahamas'),
+    ('CC',        'Chile',                          'Chile'),
+    ('CN',        'Morocco',                        'Morocco'),
+    ('CP',        'Bolivia',                        'Bolivia'),
+    ('CS',        'Portugal',                       'Portugal'),
+    ('CU',        'Cuba',                           'Cuba'),
+    ('CX',        'Uruguay',                        'Uruguay'),
+    ('D',         'Germany',                        'Germany'),
+    ('D2',        'Angola',                         'Angola'),
+    ('D4',        'Cape Verde',                     'Cape_Verde'),
+    ('D6',        'Comoros',                        'Comoros'),
+    ('DQ',        'Fiji',                           'Fiji'),
+    ('EC',        'Spain',                          'Spain'),
+    ('EI',        'Ireland',                        'Ireland'),
+    ('EK',        'Armenia',                        'Armenia'),
+    ('EL',        'Liberia',                        'Liberia'),
+    ('EP',        'Iran',                           'Iran'),
+    ('ER',        'Moldova',                        'Moldova'),
+    ('ES',        'Estonia',                        'Estonia'),
+    ('ET',        'Ethiopia',                       'Ethiopia'),
+    ('EW',        'Belarus',                        'Belarus'),
+    ('EX',        'Kyrgyzstan',                     'Kyrgyzstan'),
+    ('EY',        'Tajikistan',                     'Tajikistan'),
+    ('EZ',        'Turkmenistan',                   'Turkmenistan'),
+    ('F',         'France',                         'France'),
+    ('G',         'United Kingdom',                 'United_Kingdom'),
+    ('HA',        'Hungary',                        'Hungary'),
+    ('HB',        'Switzerland',                    'Switzerland'),
+    ('HC',        'Ecuador',                        'Ecuador'),
+    ('HH',        'Haiti',                          'Haiti'),
+    ('HI',        'Dominican Republic',             'Dominican_Republic'),
+    ('HK',        'Colombia',                       'Colombia'),
+    ('HL',        'South Korea',                    'South_Korea'),
+    ('HP',        'Panama',                         'Panama'),
+    ('HR',        'Honduras',                       'Honduras'),
+    ('HS',        'Thailand',                       'Thailand'),
+    ('HV',        'Vatican City',                   'Vatican_City'),
+    ('HZ',        'Saudi Arabia',                   'Saudi_Arabia'),
+    ('I',         'Italy',                          'Italy'),
+    ('J2',        'Djibouti',                       'Djibouti'),
+    ('J3',        'Grenada',                        'Grenada'),
+    ('J5',        'Guinea-Bissau',                  'Guinea-Bissau'),
+    ('J6',        'Saint Lucia',                    'Saint_Lucia'),
+    ('J7',        'Dominica',                       'Dominica'),
+    ('J8',        'Saint Vincent and the Grenadines', 'Saint_Vincent_And_The_Grenadines'),
+    ('JA',        'Japan',                          'Japan'),
+    ('JY',        'Jordan',                         'Jordan'),
+    ('LN',        'Norway',                         'Norway'),
+    ('LV',        'Argentina',                      'Argentina'),
+    ('LX',        'Luxembourg',                     'Luxembourg'),
+    ('LY',        'Lithuania',                      'Lithuania'),
+    ('LZ',        'Bulgaria',                       'Bulgaria'),
+    ('M-',        'Isle of Man',                    'Isleofman'),
+    ('N',         'United States',                  'United_States'),
+    ('OB',        'Peru',                           'Peru'),
+    ('OD',        'Lebanon',                        'Lebanon'),
+    ('OE',        'Austria',                        'Austria'),
+    ('OH',        'Finland',                        'Finland'),
+    ('OK',        'Czech Republic',                 'Czech_Republic'),
+    ('OM',        'Slovakia',                       'Slovakia'),
+    ('OO',        'Belgium',                        'Belgium'),
+    ('OY',        'Denmark',                        'Denmark'),
+    ('P2',        'Papua New Guinea',               'Papua_New_Guinea'),
+    ('P4',        'Aruba',                          'Aruba'),
+    ('PH',        'Netherlands',                    'Netherlands'),
+    ('PJ',        'Curaçao',                        'Curacao'),
+    ('PK',        'Indonesia',                      'Indonesia'),
+    ('PP',        'Brazil',                         'Brazil'),
+    ('PZ',        'Suriname',                       'Suriname'),
+    ('RA',        'Russia',                         'Russia'),
+    ('RP',        'Philippines',                    'Philippines'),
+    ('S2',        'Bangladesh',                     'Bangladesh'),
+    ('S5',        'Slovenia',                       'Slovenia'),
+    ('S7',        'Seychelles',                     'Seychelles'),
+    ('S9',        'São Tomé and Príncipe',           'Sao_Tome_And_Principe'),
+    ('SE',        'Sweden',                         'Sweden'),
+    ('SP',        'Poland',                         'Poland'),
+    ('ST',        'Sudan',                          'Sudan'),
+    ('SU',        'Egypt',                          'Egypt'),
+    ('SX',        'Greece',                         'Greece'),
+    ('T2',        'Tuvalu',                         'Tuvalu'),
+    ('T3',        'Kiribati',                       'Kiribati'),
+    ('T7',        'San Marino',                     'San_Marino'),
+    ('T9',        'Bosnia and Herzegovina',          'Bosnia_And_Herzegovina'),
+    ('TC',        'Turkey',                         'Turkey'),
+    ('TF',        'Iceland',                        'Iceland'),
+    ('TG',        'Guatemala',                      'Guatemala'),
+    ('TI',        'Costa Rica',                     'Costa_Rica'),
+    ('TJ',        'Cameroon',                       'Cameroon'),
+    ('TL',        'Central African Republic',        'Central_African_Republic'),
+    ('TN',        'Republic of Congo',              'Republic_Of_Congo'),
+    ('TR',        'Gabon',                          'Gabon'),
+    ('TS',        'Tunisia',                        'Tunisia'),
+    ('TT',        'Chad',                           'Chad'),
+    ('TU',        "Côte d'Ivoire",                  'Cote_DIvoire'),
+    ('TY',        'Benin',                          'Benin'),
+    ('TZ',        'Mali',                           'Mali'),
+    ('UK',        'Uzbekistan',                     'Uzbekistan'),
+    ('UN',        'Kazakhstan',                     'Kazakhstan'),
+    ('UR',        'Ukraine',                        'Ukraine'),
+    ('V2',        'Antigua and Barbuda',             'Antigua_And_Barbuda'),
+    ('V3',        'Belize',                         'Belize'),
+    ('V4',        'Saint Kitts and Nevis',           'Saint_Kitts_And_Nevis'),
+    ('V5',        'Namibia',                        'Namibia'),
+    ('V6',        'Micronesia',                     'Micronesia'),
+    ('V7',        'Marshall Islands',               'Marshall_Islands'),
+    ('V8',        'Brunei',                         'Brunei'),
+    ('VH',        'Australia',                      'Australia'),
+    ('VN',        'Vietnam',                        'Vietnam'),
+    ('VP-A',      'Anguilla',                       'Anguilla'),
+    ('VP-B',      'Bermuda',                        'Bermuda'),
+    ('VP-C',      'Cayman Islands',                 'Cayman_Islands'),
+    ('VP-F',      'Falkland Islands',               'Falkland_Islands'),
+    ('VP-G',      'Gibraltar',                      'Gibraltar'),
+    ('VP-L',      'British Virgin Islands',          'British_Virgin_Islands'),
+    ('VP-M',      'Montserrat',                     'Montserrat'),
+    ('VQ-H',      'Saint Helena',                   'Saint_Helena'),
+    ('VQ-T',      'Turks and Caicos Islands',        'Turks_And_Caicos_Islands'),
+    ('VT',        'India',                          'India'),
+    ('XA',        'Mexico',                         'Mexico'),
+    ('XT',        'Burkina Faso',                   'Burkina_Faso'),
+    ('XU',        'Cambodia',                       'Cambodia'),
+    ('XY',        'Myanmar',                        'Myanmar'),
+    ('YA',        'Afghanistan',                    'Afghanistan'),
+    ('YI',        'Iraq',                           'Iraq'),
+    ('YJ',        'Vanuatu',                        'Vanuatu'),
+    ('YK',        'Syria',                          'Syria'),
+    ('YL',        'Latvia',                         'Latvia'),
+    ('YN',        'Nicaragua',                      'Nicaragua'),
+    ('YR',        'Romania',                        'Romania'),
+    ('YS',        'El Salvador',                    'El_Salvador'),
+    ('YU',        'Serbia',                         'Serbia'),
+    ('YV',        'Venezuela',                      'Venezuela'),
+    ('Z',         'Zimbabwe',                       'Zimbabwe'),
+    ('Z3',        'North Macedonia',                'North_Macedonia'),
+    ('ZA',        'Albania',                        'Albania'),
+    ('ZK',        'New Zealand',                    'New_Zealand'),
+    ('ZP',        'Paraguay',                       'Paraguay'),
+    ('ZS',        'South Africa',                   'South_Africa'),
+    ('2-',        'Guernsey',                       'Guernsey'),
+    ('3A',        'Monaco',                         'Monaco'),
+    ('3B',        'Mauritius',                      'Mauritius'),
+    ('3C',        'Equatorial Guinea',              'Equatorial_Guinea'),
+    ('3D',        'Eswatini',                       'Eswatini'),
+    ('3X',        'Guinea',                         'Guinea'),
+    ('4K',        'Azerbaijan',                     'Azerbaijan'),
+    ('4L',        'Georgia',                        'Georgia'),
+    ('4O',        'Montenegro',                     'Montenegro'),
+    ('4R',        'Sri Lanka',                      'Sri_Lanka'),
+    ('4W',        'Timor-Leste',                    'Timor_Leste'),
+    ('4X',        'Israel',                         'Israel'),
+    ('5A',        'Libya',                          'Libya'),
+    ('5B',        'Cyprus',                         'Cyprus'),
+    ('5H',        'Tanzania',                       'Tanzania'),
+    ('5N',        'Nigeria',                        'Nigeria'),
+    ('5R',        'Madagascar',                     'Madagascar'),
+    ('5T',        'Mauritania',                     'Mauritania'),
+    ('5U',        'Niger',                          'Niger'),
+    ('5V',        'Togo',                           'Togo'),
+    ('5W',        'Samoa',                          'Samoa'),
+    ('5X',        'Uganda',                         'Uganda'),
+    ('5Y',        'Kenya',                          'Kenya'),
+    ('6O',        'Somalia',                        'Somalia'),
+    ('6V',        'Senegal',                        'Senegal'),
+    ('6Y',        'Jamaica',                        'Jamaica'),
+    ('7O',        'Yemen',                          'Yemen'),
+    ('7P',        'Lesotho',                        'Lesotho'),
+    ('7Q',        'Malawi',                         'Malawi'),
+    ('7T',        'Algeria',                        'Algeria'),
+    ('8P',        'Barbados',                       'Barbados'),
+    ('8Q',        'Maldives',                       'Maldives'),
+    ('8R',        'Guyana',                         'Guyana'),
+    ('9A',        'Croatia',                        'Croatia'),
+    ('9G',        'Ghana',                          'Ghana'),
+    ('9H',        'Malta',                          'Malta'),
+    ('9J',        'Zambia',                         'Zambia'),
+    ('9K',        'Kuwait',                         'Kuwait'),
+    ('9L',        'Sierra Leone',                   'Sierra_Leone'),
+    ('9M',        'Malaysia',                       'Malaysia'),
+    ('9N',        'Nepal',                          'Nepal'),
+    ('9Q',        'DR Congo',                       'DR_Congo'),
+    ('9U',        'Burundi',                        'Burundi'),
+    ('9V',        'Singapore',                      'Singapore'),
+    ('9XR',       'Rwanda',                         'Rwanda'),
+    ('9Y',        'Trinidad and Tobago',             'Trinidad_And_Tobago'),
+]
+
+
+def _packs_countries() -> set[str]:
+    """
+    Return a set of normalised country names found in the packs folder.
+    Normalise = lowercase, remove underscores, spaces, hyphens, ampersands, apostrophes.
+    Picks up any file with a recognised data extension.
+    """
+    packs_dir = _registries_dir() / 'packs'
+    found: set[str] = set()
+    if not packs_dir.is_dir():
+        return found
+    DATA_EXTS = {'.xlsx', '.pdf', '.csv', '.sql', '.txt', '.xls', '.ods'}
+    for f in packs_dir.iterdir():
+        if f.is_file() and f.suffix.lower() in DATA_EXTS:
+            stem = f.stem.replace('_', '').replace(' ', '').replace('-', '').replace('&', '').replace("'", '').lower()
+            found.add(stem)
+    return found
+
+
+def _norm(s: str) -> str:
+    """Normalise a country name or dir name for fuzzy matching."""
+    return s.replace('_', '').replace(' ', '').replace('-', '').replace('&', '').replace("'", '').replace('.', '').lower()
+
+
+@registry_bp.route('/manifest')
+def registry_manifest():
+    """Return JSON list of available registries — consumed by client installs."""
+    registries = scan_registries()
+    return jsonify([
+        {
+            'name':         r['display_name'],
+            'dir':          r['dir'],
+            'table':        r['table'],
+            'file_records': r['file_records'],
+        }
+        for r in registries
+    ])
+
+
+@registry_bp.route('/sql/<country>')
+def registry_sql(country):
+    """Stream the SQL file for a registry — consumed by client installs."""
+    from flask import send_file, abort
+    reg_dir = _registries_dir()
+    # Sanitise: only allow Title_Case dir names that exist
+    country_dir = reg_dir / country
+    if not country_dir.is_dir() or country.lower() in _SKIP_DIRS or not country[0].isupper():
+        abort(404)
+    sql_file = _find_sql_file(country_dir)
+    if not sql_file:
+        abort(404)
+    return send_file(str(sql_file), mimetype='application/sql', as_attachment=True,
+                     download_name=sql_file.name)
+
+
+@registry_bp.route('/tracker')
+def registry_tracker():
+    """Full ICAO country registry progress tracker."""
+    reg_dir = _registries_dir()
+    packs_names = _packs_countries()
+
+    # Build a map of dir_name (normalised) → (has_sql, is_imported, row_count, table_name)
+    sql_ready: dict[str, tuple[bool, int, str]] = {}
+    try:
+        for item in reg_dir.iterdir():
+            if not item.is_dir():
+                continue
+            if item.name.lower() in _SKIP_DIRS:
+                continue
+            if not item.name[0].isupper():
+                continue
+            sql_file = _find_sql_file(item)
+            if not sql_file:
+                continue
+            table_name = _extract_table_name(sql_file)
+            if not table_name:
+                continue
+            imported = _table_exists(table_name)
+            rows = _row_count(table_name) if imported else _record_count_from_comment(sql_file)
+            sql_ready[_norm(item.name)] = (imported, rows, table_name)
+    except Exception:
+        pass
+
+    countries = []
+    counts = {'imported': 0, 'sql_ready': 0, 'in_packs': 0, 'missing': 0}
+
+    for prefix, display_name, dir_name in ICAO_COUNTRIES:
+        key = _norm(dir_name)
+        name_key = _norm(display_name)
+
+        if key in sql_ready:
+            imported, rows, table_name = sql_ready[key]
+            if imported:
+                status = 'imported'
+                status_label = '✓ Imported'
+            else:
+                status = 'sql_ready'
+                status_label = 'SQL Ready'
+        elif key in packs_names or name_key in packs_names:
+            status = 'in_packs'
+            status_label = 'In Packs'
+            rows = 0
+        else:
+            status = 'missing'
+            status_label = 'Missing'
+            rows = 0
+
+        counts[status] += 1
+        countries.append({
+            'prefix':       prefix,
+            'name':         display_name,
+            'dir':          dir_name,
+            'status':       status,
+            'status_label': status_label,
+            'rows':         rows,
+        })
+
+    total = len(countries)
+    return render_template(
+        'admin_registry_tracker.html',
+        countries=countries,
+        counts=counts,
+        total=total,
+    )

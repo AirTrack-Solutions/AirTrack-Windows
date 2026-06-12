@@ -189,7 +189,8 @@ def inject_env_vars():
     try:
         return {
             "AIRTRACK_UPDATE_MODE": os.getenv("AIRTRACK_UPDATE_MODE", ""),
-            "AIRTRACK_SYNC_USER": os.getenv("AIRTRACK_SYNC_USER", ""),
+            "AIRTRACK_SYNC_USER":   os.getenv("AIRTRACK_SYNC_USER", ""),
+            "aria_enabled":         os.getenv("ARIA_ENABLED", "0").lower() in ("1", "true", "yes"),
         }
     except Exception:
         return {}
@@ -410,6 +411,15 @@ def inject_globals():
     return {"max": max, "min": min}
 
 
+@app.context_processor
+def inject_endpoint_check():
+    """Expose endpoint_exists() to all templates for graceful nav degradation."""
+    from flask import current_app
+    def endpoint_exists(name):
+        return name in current_app.url_map._rules_by_endpoint
+    return dict(endpoint_exists=endpoint_exists)
+
+
 @app.template_filter("format_datetime")
 
 def format_datetime(value):
@@ -434,12 +444,7 @@ def root():
 @app.route("/splash")
 
 def splash():
-    return render_template(
-        "splash.html",
-        current_time=time(),
-        selected_theme=get_current_theme(),
-        cache_bust=int(time()),
-    )
+    return render_template("splash.html", current_time=time())
 
 
 @app.route("/reports")
@@ -507,8 +512,6 @@ def index():
             total_pages=1,
             current_year=current_year,
             settings=settings,
-            selected_theme=get_current_theme(),
-            cache_bust=int(time()),
         )
 
     except Exception as e:
@@ -522,8 +525,6 @@ def index():
             selected_airline_name="",
             no_aircraft_message="", current_year=current_year,
             settings={},
-            selected_theme=get_current_theme(),
-            cache_bust=int(time()),
         )
 
 
@@ -1147,6 +1148,8 @@ def admin_panel():
         return None
 
     airtrack_urls = {
+        "check_updates": _safe_url("admin_tools.check_updates"),
+        "run_updater": _safe_url("admin_tools.run_updater"),
         "git_commit": _safe_url("admin_tools.git_commit"),
         "git_push": _safe_url("admin_tools.git_push"),
         "housekeeping": _safe_url("admin_tools.housekeeping"),
@@ -1224,6 +1227,10 @@ from routes.airports_api import bp as airports_api_bp
 
 from routes.manual_entry_routes import manual_entry_bp
 from routes.registry_routes import registry_bp
+_ARIA_ENABLED = os.getenv("ARIA_ENABLED", "0").lower() in ("1", "true", "yes")
+if _ARIA_ENABLED:
+    from routes.aria_routes import aria_bp
+from modules.module_loader import register_optional_modules
 
 try:
     from routes.billing_routes import billing_bp
@@ -1248,6 +1255,9 @@ app.register_blueprint(airline_logo_linker)
 app.register_blueprint(admin_tools_routes.admin_tools_bp)
 app.register_blueprint(manual_entry_bp)
 app.register_blueprint(registry_bp)
+if _ARIA_ENABLED:
+    app.register_blueprint(aria_bp)
+    csrf.exempt(aria_bp)
 csrf.exempt(manual_entry_bp)
 csrf.exempt(admin_tools_routes.admin_tools_bp)
 csrf.exempt(admin_bp)
@@ -1259,10 +1269,19 @@ if billing_bp:
 if billing_webhook_bp:
     app.register_blueprint(billing_webhook_bp)
 
+
+# ---------------------------------------------------------------------------
+# Optional modules
+# ---------------------------------------------------------------------------
+try:
+    module_summary = register_optional_modules(app)
+    logging.info(f"✅ Optional module loader completed: {module_summary}")
+except Exception as e:
+    logging.error(f"❌ Optional module loader failed: {e}", exc_info=True)
+
 # Optional
 try:
     from server.utils.private_cockpit import private_cockpit_bp
-
     app.register_blueprint(private_cockpit_bp)
 except ImportError:
     pass
@@ -1283,3 +1302,34 @@ if __name__ == "__main__":
         use_reloader=False,
         threaded=True,
     )
+
+# ---------------------------------------------------------------------------
+# Woodland Scheduler — capability delivery
+# ---------------------------------------------------------------------------
+try:
+    import os as _os
+    if _os.getenv("WOMBAT_URL") and _os.getenv("AIRTRACK_CUSTOMER_ID"):
+        from apscheduler.schedulers.background import BackgroundScheduler
+        from apscheduler.triggers.interval import IntervalTrigger
+
+        def _run_mangy_marmot():
+            try:
+                from woodland.mangy_marmot import main
+                main()
+            except Exception as _exc:
+                logging.error("Mangy Marmot crashed: %s", _exc, exc_info=True)
+
+        _scheduler = BackgroundScheduler(timezone="UTC")
+        _scheduler.add_job(
+            _run_mangy_marmot,
+            IntervalTrigger(minutes=5),
+            id="mangy_marmot",
+            name="Mangy Marmot",
+            max_instances=1,
+            coalesce=True,
+        )
+        _scheduler.start()
+        logging.info("Woodland Scheduler started — Mangy Marmot every 5 minutes")
+        _run_mangy_marmot()  # run immediately on startup
+except Exception as _sched_exc:
+    logging.error("Woodland Scheduler failed to start: %s", _sched_exc, exc_info=True)

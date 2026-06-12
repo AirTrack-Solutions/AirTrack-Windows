@@ -7,6 +7,7 @@ import json
 import urllib.request
 import urllib.error
 from datetime import date, datetime
+from pathlib import Path
 
 import pytz
 from flask import Blueprint, flash, jsonify, redirect, render_template, request, url_for
@@ -14,9 +15,11 @@ from sqlalchemy import text
 
 from extensions import db
 from security.guards import require_server
-from utils.settings_utils import get_current_timezone
+from utils.settings_utils import format_display_dt
 
 reports_bp = Blueprint("reports", __name__, url_prefix="/reports")
+
+SITEMAP_PATH = Path(__file__).resolve().parents[1] / "static" / "sitemap.json"
 
 # -------------------------------------------------
 # Database schema description sent to the API
@@ -89,7 +92,10 @@ IMPORTANT QUERY GUIDANCE:
 - When asked about a specific registration, check both aircraft table and relevant country registry
 
 The user asks natural language questions about their aircraft spotting data.
-You must respond with a JSON object in one of two formats:
+You will also receive a SITEMAP listing every page in the application with its URL and description.
+Use the sitemap to answer navigation questions like "where do I add an aircraft" or "how do I see reports".
+
+You must respond with a JSON object in one of three formats:
 
 Format 1 - for questions that need a database query:
 {
@@ -104,6 +110,13 @@ Format 2 - for questions you can answer without a query (general knowledge about
   "text": "Your plain English answer here"
 }
 
+Format 3 - for navigation questions about where to find a feature or page:
+{
+  "type": "navigate",
+  "text": "Plain English answer describing where to go",
+  "url": "/the/url/to/link/to"
+}
+
 Rules:
 - Only use SELECT statements, never INSERT/UPDATE/DELETE/DROP
 - Always use table aliases for clarity
@@ -111,19 +124,14 @@ Rules:
 - For date questions, use MySQL date functions
 - If unsure, return a query that gets relevant data and explain what it shows
 - Respond ONLY with the JSON object, no markdown, no explanation outside the JSON
+- For navigation questions, always use Format 3 with the exact URL from the sitemap
 """
 
 
 # -------------------------------------------------
 # Helpers
 # -------------------------------------------------
-def _to_tz(dt, tz):
-    """Normalize dates → datetime and convert UTC → user timezone."""
-    if not dt:
-        return None
-    if isinstance(dt, date) and not isinstance(dt, datetime):
-        dt = datetime.combine(dt, datetime.min.time())
-    return dt.replace(tzinfo=pytz.utc).astimezone(tz)
+
 
 
 def render_report(title, columns, data):
@@ -138,14 +146,9 @@ def safe_query(sql, params=None, title="", columns=None):
         result = db.session.execute(text(sql), params or {})
         rows = [dict(row._mapping) for row in result.fetchall()]
 
-        timezone = get_current_timezone()
         for row in rows:
             if "First_Sighted" in row:
-                dt = row["First_Sighted"]
-                converted = _to_tz(dt, timezone)
-                row["First_Sighted"] = (
-                    converted.strftime("%d-%m-%Y %H:%M:%S") if converted else "Unknown"
-                )
+                row["First_Sighted"] = format_display_dt(row["First_Sighted"])
 
         return render_report(title, columns or [], rows)
 
@@ -161,7 +164,7 @@ def safe_query(sql, params=None, title="", columns=None):
 @reports_bp.route("/ask", methods=["POST"])
 @require_server
 def ask():
-    """Natural language question → Anthropic API → SQL or plain answer."""
+    """Natural language question → Anthropic API → SQL, plain answer, or navigation."""
     question = (request.json or {}).get("question", "").strip()
     if not question:
         return jsonify({"type": "error", "text": "No question provided."}), 400
@@ -170,12 +173,22 @@ def ask():
     if not api_key:
         return jsonify({"type": "error", "text": "Anthropic API key not configured."}), 500
 
+    # Load sitemap fresh from disk on every request — no caching
+    sitemap_text = ""
+    try:
+        sitemap_data = json.loads(SITEMAP_PATH.read_text(encoding="utf-8"))
+        sitemap_text = "\n\nSITEMAP:\n" + json.dumps(sitemap_data, indent=2)
+    except Exception:
+        pass  # Sitemap missing or unreadable — degrade gracefully
+
+    system_prompt = DB_SCHEMA + sitemap_text
+
     # Call Anthropic API
     try:
         payload = json.dumps({
             "model": "claude-haiku-4-5-20251001",
             "max_tokens": 1024,
-            "system": DB_SCHEMA,
+            "system": system_prompt,
             "messages": [{"role": "user", "content": question}]
         }).encode("utf-8")
 
@@ -214,6 +227,14 @@ def ask():
     if parsed.get("type") == "answer":
         return jsonify({"type": "answer", "text": parsed.get("text", "No answer returned.")})
 
+    # Handle navigation
+    if parsed.get("type") == "navigate":
+        return jsonify({
+            "type": "navigate",
+            "text": parsed.get("text", ""),
+            "url":  parsed.get("url", "")
+        })
+
     # Handle SQL query
     if parsed.get("type") == "query":
         sql = parsed.get("sql", "").strip()
@@ -228,12 +249,10 @@ def ask():
             rows = [dict(row._mapping) for row in result.fetchall()]
 
             # Normalise datetimes
-            timezone = get_current_timezone()
             for row in rows:
                 for key, val in row.items():
                     if isinstance(val, datetime):
-                        converted = _to_tz(val, timezone)
-                        row[key] = converted.strftime("%d-%m-%Y %H:%M:%S") if converted else "Unknown"
+                        row[key] = format_display_dt(val)
                     elif isinstance(val, date):
                         row[key] = val.strftime("%d-%m-%Y")
 
@@ -287,10 +306,10 @@ def report_logged_airports():
         flight_count = db.session.execute(text("SELECT COUNT(*) FROM flights")).scalar()
         if not flight_count:
             flash("No flights found to generate the report.", "info")
-            return render_report("Logged Airports", ["ICAO", "AirportName", "Country"], [])
+            return render_report("Logged Airports", ["Airport", "AirportName", "Country"], [])
 
         query = text("""
-            SELECT DISTINCT a.ICAO, a.AirportName, a.Country
+            SELECT DISTINCT a.ICAO AS Airport, a.AirportName, a.Country
             FROM airports a
             JOIN (
                 SELECT DISTINCT Departure AS ICAO FROM flights
@@ -312,7 +331,7 @@ def report_logged_airports():
         flash("Failed to load Logged Airports report.", "danger")
         airports = []
 
-    return render_report("Logged Airports", ["ICAO", "AirportName", "Country"], airports)
+    return render_report("Logged Airports", ["Airport", "AirportName", "Country"], airports)
 
 
 @reports_bp.route("/most_seen_aircraft")

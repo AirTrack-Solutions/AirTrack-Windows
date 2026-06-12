@@ -82,7 +82,7 @@ def add_aircraft():
         result = db.session.execute(
             text(
                 "SELECT AirlineID, AirlineName FROM airlines "
-                "ORDER BY AirlineName"
+                "WHERE Ceased_Operations = 0 ORDER BY AirlineName"
             )
         )
         airlines = [dict(row._mapping) for row in result.fetchall()]
@@ -136,9 +136,6 @@ def add_aircraft():
             notes = request.form.get("Notes")
             country_of_reg = request.form.get("Country_of_Reg")
 
-            times_seen_raw = request.form.get("Times_Seen", "").strip()
-            times_seen = int(times_seen_raw) if times_seen_raw.isdigit() else 0
-
             manufacture_year_raw = request.form.get("Manufacture_Year", "")
             manufacture_year = (
                 int(manufacture_year_raw)
@@ -163,7 +160,18 @@ def add_aircraft():
 
             now_utc = datetime.utcnow()
             aircraft_updated = now_utc
-            first_sighted = now_utc
+
+            sighting_date = request.form.get("Sighting_Date", "").strip()
+            sighting_time = request.form.get("Sighting_Time", "").strip()
+            if sighting_date:
+                try:
+                    from datetime import datetime as _dt
+                    dt_str = sighting_date + " " + (sighting_time if sighting_time else "00:00")
+                    first_sighted = _dt.strptime(dt_str, "%Y-%m-%d %H:%M")
+                except ValueError:
+                    first_sighted = now_utc
+            else:
+                first_sighted = now_utc
 
             # Insert aircraft
             db.session.execute(
@@ -177,7 +185,6 @@ def add_aircraft():
                     MSN,
                     Category,
                     Country_of_Reg,
-                    Times_Seen,
                     Manufacture_Year,
                     Manufacture_Month,
                     ICAO_Address,
@@ -195,7 +202,6 @@ def add_aircraft():
                     :MSN,
                     :Category,
                     :Country_of_Reg,
-                    :Times_Seen,
                     :Manufacture_Year,
                     :Manufacture_Month,
                     :ICAO_Address,
@@ -216,7 +222,6 @@ def add_aircraft():
                     "MSN": msn,
                     "Category": category,
                     "Country_of_Reg": country_of_reg,
-                    "Times_Seen": times_seen,
                     "Manufacture_Year": manufacture_year,
                     "Manufacture_Month": manufacture_month,
                     "ICAO_Address": icao_address,
@@ -245,7 +250,6 @@ def add_aircraft():
                     Registration,
                     MSN,
                     Aircraft_Type,
-                    Times_Seen,
                     Departure,
                     Arrival,
                     Country_of_Reg,
@@ -258,7 +262,6 @@ def add_aircraft():
                     :Registration,
                     :MSN,
                     :Aircraft_Type,
-                    :Times_Seen,
                     :Departure,
                     :Arrival,
                     :Country_of_Reg,
@@ -274,7 +277,6 @@ def add_aircraft():
                     "Registration": registration_form,
                     "MSN": msn,
                     "Aircraft_Type": aircraft_type,
-                    "Times_Seen": times_seen,
                     "Departure": departure,
                     "Arrival": arrival,
                     "Country_of_Reg": country_of_reg,
@@ -282,6 +284,27 @@ def add_aircraft():
                     "Spotted_At": spotted_at,
                 },
             )
+
+            # Write initial operator history row if an airline was assigned
+            if airline_id:
+                airline_name_snap = db.session.execute(
+                    text("SELECT AirlineName FROM airlines WHERE AirlineID = :id"),
+                    {"id": airline_id},
+                ).scalar()
+                db.session.execute(
+                    text(
+                        "INSERT INTO aircraft_owners "
+                        "(AircraftID, AirlineID, airline_name_snapshot, From_Date, Notes) "
+                        "VALUES (:ac, :al, :snap, :fd, :notes)"
+                    ),
+                    {
+                        "ac":    aircraft_id,
+                        "al":    airline_id,
+                        "snap":  airline_name_snap,
+                        "fd":    first_sighted or aircraft_updated,
+                        "notes": "Initial operator at time of add",
+                    },
+                )
 
             db.session.commit()
             flash("Aircraft added successfully!", "success")

@@ -62,13 +62,25 @@ def _is_git_dir(p: Path) -> bool:
     return g.is_dir() or g.is_file()
 
 
-def _run_cmd(cmd: str, cwd: Path | None = None):
+def _run_cmd(cmd: str, cwd: Path | None = None, extra_env: dict | None = None):
+    import os as _os
+    env = {**_os.environ, **(extra_env or {})}
     p = subprocess.Popen(
         shlex.split(cmd), cwd=str(cwd) if cwd else None,
         stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+        env=env,
     )
     out, err = p.communicate()
     return p.returncode, (out or '').strip(), (err or '').strip()
+
+
+# Git env — suppress interactive prompts, don't touch GIT_SSH_COMMAND
+def _git_env() -> dict:
+    """Return env for git subprocesses with GIT_SSH_COMMAND removed."""
+    import os as _os
+    env = {k: v for k, v in _os.environ.items() if k != 'GIT_SSH_COMMAND'}
+    env['GIT_TERMINAL_PROMPT'] = '0'
+    return env
 
 
 def _repo_root() -> Path | None:
@@ -196,8 +208,36 @@ def test_airport():
     return jsonify({"code": code, "row_keys": list(row.keys()) if row else []})
 
 
-@admin_tools_bp.route('/whitelist_link', methods=['POST'])
+@admin_tools_bp.route('/update_airport_link', methods=['POST'])
+@require_server
+def update_airport_link():
+    """Update home_link or wikipedia_link directly in the airports table."""
+    icao      = (request.form.get('icao') or '').strip().upper()
+    field     = request.form.get('field')   # 'home_link' or 'wikipedia_link'
+    new_value = (request.form.get('new_value') or '').strip()
 
+    allowed_fields = {'home_link', 'wikipedia_link'}
+    if not icao or field not in allowed_fields or not new_value:
+        flash("Missing or invalid fields.", 'danger')
+        return redirect(url_for('admin_tools.broken_links'))
+
+    try:
+        db.session.execute(
+            text(f"UPDATE airports SET {field} = :val WHERE ICAO = :icao"),
+            {"val": new_value, "icao": icao},
+        )
+        db.session.commit()
+        label = "Website" if field == "home_link" else "Wikipedia"
+        flash(f"✅ {label} updated for {icao}.", 'success')
+        logging.info(f"Airport link updated: {icao} {field} → {new_value}")
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"❌ Airport link update failed: {e}")
+        flash(f"❌ Failed to update link: {e}", 'danger')
+    return redirect(url_for('admin_tools.broken_links'))
+
+
+@admin_tools_bp.route('/whitelist_link', methods=['POST'])
 def whitelist_link():
     icao = (request.form.get('icao') or '').strip().upper()
     label = request.form.get('label')
@@ -214,10 +254,6 @@ def whitelist_link():
         flash("❌ Failed to whitelist link.", 'danger')
     return redirect(url_for('admin_tools.broken_links'))
 
-
-@admin_tools_bp.route('/run_updater', methods=['GET', 'POST'])
-def run_updater():
-    return _err("This updater has been retired. Use docker compose to update.")
 
 @admin_tools_bp.route('/git_commit', methods=['POST'])
 @require_server
@@ -261,6 +297,36 @@ def git_push():
         return _ok(status="ok", detail="✅ Push successful.")
     except Exception as e:
         return _err(f"❌ Push failed: {e}")
+
+
+@admin_tools_bp.route('/git_pull', methods=['POST'])
+@require_server
+
+def git_pull():
+    """Pull latest commits from remote into the server repo."""
+    repo = _repo_root()
+    if not repo:
+        return _err("❌ Repo root not found.")
+
+    try:
+        rc, out, err = _run_cmd("git fetch origin", cwd=repo, extra_env=_git_env())
+        if rc != 0:
+            return _err(f"❌ git fetch failed: {err or out}")
+
+        rc2, behind_str, _ = _run_cmd("git rev-list --count HEAD..origin/main", cwd=repo)
+        behind = int(behind_str) if rc2 == 0 and behind_str.strip().isdigit() else 0
+
+        if behind == 0:
+            return _ok(status="noop", detail="ℹ️ Already up to date.", restart_required=False)
+
+        rc3, out3, err3 = _run_cmd("git reset --hard origin/main", cwd=repo, extra_env=_git_env())
+        if rc3 != 0:
+            return _err(f"❌ git reset failed: {err3 or out3}")
+
+        _run_cmd("git clean -fd", cwd=repo, extra_env=_git_env())
+        return _ok(status="ok", detail=out3 or "✅ Pull successful.", restart_required=True)
+    except Exception as e:
+        return _err(f"❌ Pull failed: {e}")
 
 
 @admin_tools_bp.get("/themes")
@@ -477,31 +543,65 @@ def check_whitelist_links():
     return redirect(url_for("admin.admin_dashboard"))
 
 
+@admin_tools_bp.route("/check_airport_links", methods=["POST"])
+@require_server
+def check_airport_links():
+    """
+    Check website and Wikipedia links for all logged airports and show broken ones.
+    Only checks airports the operator has actually logged (departure/arrival).
+    """
+    from utils.link_checker import check_airport_links as run_check
+    output_dir = os.path.join(current_app.root_path, 'logs')
+    try:
+        result = db.session.execute(text("""
+            SELECT DISTINCT a.ICAO, a.AirportName, a.home_link, a.wikipedia_link
+            FROM airports a
+            JOIN (
+                SELECT DISTINCT Departure AS ICAO FROM flights
+                UNION
+                SELECT DISTINCT Arrival AS ICAO FROM flights
+            ) f ON a.ICAO = f.ICAO
+            WHERE (a.home_link IS NOT NULL AND a.home_link != '')
+               OR (a.wikipedia_link IS NOT NULL AND a.wikipedia_link != '')
+        """)).fetchall()
+        broken = run_check(result, output_dir)
+
+        # Auto-update any redirected links in the database
+        redirects = [e for e in broken if e['status'] == 'REDIRECTED' and e.get('redirect_to')]
+        if redirects:
+            for entry in redirects:
+                field = 'home_link' if entry['label'] == 'Website' else 'wikipedia_link'
+                try:
+                    db.session.execute(
+                        text(f"UPDATE airports SET {field} = :val WHERE ICAO = :icao"),
+                        {"val": entry['redirect_to'], "icao": entry['icao']},
+                    )
+                    logging.info(
+                        f"Auto-updated redirect: {entry['icao']} {field} "
+                        f"{entry['url']} → {entry['redirect_to']}"
+                    )
+                except Exception as upd_err:
+                    logging.warning(f"Auto-update skipped for {entry['icao']}: {upd_err}")
+            db.session.commit()
+            flash(f"✅ Auto-updated {len(redirects)} redirected link(s).", "success")
+
+        # Only show entries that still need human action
+        remaining = [e for e in broken if e['status'] != 'REDIRECTED']
+
+    except Exception as e:
+        logging.exception("❌ Airport link check failed")
+        flash(f"❌ Airport link check failed: {e}", "danger")
+        remaining = []
+    return render_template("admin_broken_links.html", broken_links=remaining)
+
+
 @admin_tools_bp.get("/broken_links")
 @require_server
-
 def broken_links():
     """
-    Show the whitelist/broken links management page.
+    Show the broken links page with no results — trigger a check from the Cockpit HUD.
     """
-    whitelist_path = os.path.join('logs', 'link_whitelist.txt')
-    whitelist = []
-    try:
-        if os.path.exists(whitelist_path):
-            with open(whitelist_path, "r", encoding="utf-8") as f:
-                for line in f:
-                    parts = line.strip().split("\t")
-                    if len(parts) == 3:
-                        icao, label, url = parts
-                        whitelist.append({
-                            "icao": icao,
-                            "label": label,
-                            "url": url,
-                        })
-    except Exception as e:
-        logging.warning(f"⚠️ Could not read whitelist: {e}")
-
-    return render_template("admin_broken_links.html", whitelist=whitelist)
+    return render_template("admin_broken_links.html", broken_links=[])
 
 
 @admin_tools_bp.route("/check_aircraft_images", methods=["POST"])
@@ -547,11 +647,12 @@ def check_aircraft_images():
                 f.write("Aircraft Image Link Report\n")
                 f.write("=" * 40 + "\n\n")
                 for future in as_completed(tasks):
-                    icao, name, label, url, ok = future.result()
-                    if ok:
-                        f.write(f"[{icao}] ✅ OK: {url}\n")
+                    icao, name, label, url, status, _redirect_to = future.result()
+                    from utils.link_checker import is_ok
+                    if is_ok(status):
+                        f.write(f"[{icao}] ✅ {status}: {url}\n")
                     else:
-                        f.write(f"[{icao}] ❌ Broken: {url}\n")
+                        f.write(f"[{icao}] ❌ {status}: {url}\n")
 
         flash(f"✅ Aircraft image check complete. Report: {filename}", "success")
 
@@ -568,6 +669,132 @@ def check_aircraft_images():
 def protected_ping():
     """Simple probe endpoint used by the Admin Cockpit to test server elevation."""
     return jsonify({"protected": True})
+
+
+@admin_tools_bp.get("/check_updates")
+def check_updates():
+    """
+    Check whether the local repo is behind origin/main.
+    Returns: { behind, ahead, files_needing_update[], emergency_update }
+    Works on both server (git-push workflow) and client (git-pull workflow).
+    """
+    repo = _repo_root()
+    if not repo:
+        return _ok(behind=0, ahead=0, files_needing_update=[], emergency_update=False, status="unavailable", detail="Update check not available on installed client.")
+
+    try:
+        # Fetch quietly — don't fail if offline
+        _run_cmd("git fetch origin", cwd=repo, extra_env=_git_env())
+
+        # Commits behind and ahead of origin/main
+        rc, behind_str, _ = _run_cmd(
+            "git rev-list --count HEAD..origin/main", cwd=repo
+        )
+        behind = int(behind_str) if rc == 0 and behind_str.isdigit() else 0
+
+        rc, ahead_str, _ = _run_cmd(
+            "git rev-list --count origin/main..HEAD", cwd=repo
+        )
+        ahead = int(ahead_str) if rc == 0 and ahead_str.isdigit() else 0
+
+        # Files changed on origin/main that aren't in HEAD
+        files_needing_update: list[str] = []
+        if behind > 0:
+            rc, diff_out, _ = _run_cmd(
+                "git diff --name-only HEAD origin/main", cwd=repo
+            )
+            if rc == 0 and diff_out:
+                files_needing_update = [f for f in diff_out.splitlines() if f]
+
+        return _ok(
+            behind=behind,
+            ahead=ahead,
+            files_needing_update=files_needing_update,
+            emergency_update=False,
+        )
+    except Exception as exc:
+        logging.exception("check_updates failed")
+        return _err(f"Update check failed: {exc}", code=500)
+
+
+@admin_tools_bp.post("/run_updater")
+def run_updater():
+    """
+    Pull latest commits from origin/main.
+    Returns: { status, detail, restart_required }
+    """
+    repo = _repo_root()
+    if not repo:
+        return _ok(behind=0, ahead=0, files_needing_update=[], emergency_update=False, status="unavailable", detail="Update check not available on installed client.")
+
+    try:
+        # Fetch latest from origin
+        rc, out, err = _run_cmd("git fetch origin", cwd=repo, extra_env=_git_env())
+        if rc != 0:
+            return _err(f"git fetch failed: {err or out}", code=500)
+
+        # Check if we're already current
+        rc2, behind_str, _ = _run_cmd(
+            "git rev-list --count HEAD..origin/main", cwd=repo
+        )
+        behind = int(behind_str) if rc2 == 0 and behind_str.isdigit() else 0
+
+        if behind == 0:
+            return _ok(status="success", detail="Already up to date.", restart_required=False)
+
+        # Hard reset to origin/main — wipes local divergence cleanly
+        rc3, out3, err3 = _run_cmd("git reset --hard origin/main", cwd=repo, extra_env=_git_env())
+        if rc3 != 0:
+            return _err(f"git reset failed: {err3 or out3}", code=500)
+
+        # Clean up untracked files that conflict with the new state
+        _run_cmd("git clean -fd", cwd=repo, extra_env=_git_env())
+
+        return _ok(
+            status="success",
+            detail=out3 or "Update applied.",
+            restart_required=True,
+        )
+    except Exception as exc:
+        logging.exception("run_updater failed")
+        return _err(f"Update failed: {exc}", code=500)
+
+
+@admin_tools_bp.route("/logs_tail")
+@require_server
+def logs_tail():
+    """
+    Stream the last N lines of a named log file.
+    Query params: file=<filename>, lines=<int>
+    """
+    logs_dir = Path(current_app.root_path) / "logs"
+    filename = (request.args.get("file") or "").strip()
+    try:
+        n = int(request.args.get("lines", 200))
+    except ValueError:
+        n = 200
+
+    if not filename:
+        return _err("file param required.")
+
+    file_path = (logs_dir / filename).resolve()
+    # Safety: must stay inside logs_dir
+    try:
+        file_path.relative_to(logs_dir.resolve())
+    except ValueError:
+        return _err("Invalid file path.", code=403)
+
+    if not file_path.exists() or not file_path.is_file():
+        return _err(f"Log file not found: {filename}", code=404)
+
+    try:
+        with file_path.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+        tail = "".join(lines[-n:])
+        return Response(tail, mimetype="text/plain")
+    except Exception as exc:
+        logging.exception(f"logs_tail failed for {filename}")
+        return _err(f"Failed to read log: {exc}", code=500)
 
 
 @admin_tools_bp.route("/update_municipality", methods=["POST"])
@@ -592,10 +819,3 @@ def update_municipality():
         logging.exception("❌ update_municipality failed")
         return _err(f"❌ Database error: {e}")
 
-
-@admin_tools_bp.route("/check_updates", methods=["GET", "POST"])
-
-def check_updates():
-    # Updates are managed via setup-airtrack.ps1 on Windows — this route is retired.
-    return _ok(status="ok", up_to_date=True, files_needing_update=[])
-    

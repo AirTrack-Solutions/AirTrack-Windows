@@ -34,17 +34,12 @@ from werkzeug.utils import secure_filename
 
 from utils.country_flags import get_country_flag
 
-from utils.settings_utils import get_current_theme
+from utils.settings_utils import get_current_theme, load_settings
 
 # ---------------------------------------------------------------------------
 # Time-zone helper (fallback if utils missing)
 # ---------------------------------------------------------------------------
-try:
-    from utils.timezone_utils import convert_to_local  # type: ignore
-except ImportError:
-
-    def convert_to_local(dt):
-        return dt
+from utils.settings_utils import convert_to_local, format_display_dt
 
 
 logger = logging.getLogger(__name__)
@@ -109,7 +104,8 @@ def aircraft_table():
                 COALESCE(lf.Arrival, ac.Arrival) AS Arrival,
                 ac.Spotted_At, ac.Country_of_Reg, ac.First_Sighted,
                 ac.Aircraft_Updated, ac.Aircraft_Image,
-                al.AirlineName
+                al.AirlineName,
+                (SELECT COUNT(*) FROM flights f WHERE f.AircraftID = ac.AircraftID) AS Times_Seen
             FROM aircraft ac
             LEFT JOIN airlines al ON ac.AirlineID = al.AirlineID
             LEFT JOIN (
@@ -138,10 +134,7 @@ def aircraft_table():
             dt = ac.get(fld)
             if isinstance(dt, date) and not isinstance(dt, datetime):
                 dt = datetime.combine(dt, datetime.min.time())
-            local = convert_to_local(dt) if dt else None
-            ac[f"{fld}_Display"] = (
-                local.strftime("%d-%m-%Y %H:%M:%S") if local else "Unknown"
-            )
+            ac[f"{fld}_Display"] = format_display_dt(dt)
 
         ac["Country_Flag"] = get_country_flag(ac.get("Country_of_Reg"))
 
@@ -210,6 +203,162 @@ def aircraft_info(aircraft_id):
 
     aircraft = dict(row._mapping)
 
+    # --------------------------------------------------
+    # CASA ENRICHMENT (SAFE)
+    # --------------------------------------------------
+    casa = {}
+    us = {}
+    acft = {}
+    nz = {}
+    ca = {}
+    manual = {}
+
+    reg = (aircraft.get("Registration") or "").strip().upper()
+
+    if reg.startswith("VH-"):
+        casa_row = db.session.execute(
+            text("""
+                SELECT *
+                FROM australia
+                WHERE UPPER(TRIM(registration)) = :reg
+                LIMIT 1
+            """),
+            {"reg": reg},
+        ).fetchone()
+
+        if casa_row:
+            casa = dict(casa_row._mapping)
+
+            # Fill blanks only (do NOT overwrite existing data)
+            if not aircraft.get("MSN"):
+                aircraft["MSN"] = casa.get("msn")
+
+            if not aircraft.get("Aircraft_Type"):
+                aircraft["Aircraft_Type"] = casa.get("aircraftmodel")
+
+            if not aircraft.get("Manufacture_Year"):
+                aircraft["Manufacture_Year"] = casa.get("yearmanu")
+
+            if not aircraft.get("Engine_Type"):
+                aircraft["Engine_Type"] = casa.get("enginetype")
+
+    elif reg.startswith("N") and "-" not in reg:
+        us_row = db.session.execute(
+            text("""
+                SELECT *
+                FROM united_states
+                WHERE UPPER(TRIM(registration)) = :reg
+                LIMIT 1
+            """),
+            {"reg": reg},
+        ).fetchone()
+
+        if us_row:
+            us = dict(us_row._mapping)
+
+            acft = {}
+
+            # Display-friendly reg (already stored with N prefix)
+            us["display_reg"] = us.get("registration", reg)
+
+            if not aircraft.get("MSN"):
+                aircraft["MSN"] = us.get("msn")
+
+            if not aircraft.get("Manufacture_Year"):
+                try:
+                    aircraft["Manufacture_Year"] = int(us.get("yearmanu") or 0)
+                except:
+                    pass
+
+            if not aircraft.get("Engine_Type"):
+                aircraft["Engine_Type"] = us.get("enginetype")
+
+    # --------------------------------------------------
+    # NEW ZEALAND ENRICHMENT (SAFE)
+    # --------------------------------------------------
+    nz = {}
+
+    if reg.startswith("ZK-"):
+        nz_row = db.session.execute(
+            text("""
+                SELECT *
+                FROM new_zealand
+                WHERE UPPER(TRIM(registration)) = :reg
+                LIMIT 1
+            """),
+            {"reg": reg},
+        ).fetchone()
+
+        if nz_row:
+            nz = dict(nz_row._mapping)
+
+            if not aircraft.get("MSN"):
+                aircraft["MSN"] = nz.get("serial")
+
+            if not aircraft.get("Aircraft_Type"):
+                aircraft["Aircraft_Type"] = nz.get("model")
+
+            if not aircraft.get("ICAO_Address"):
+                aircraft["ICAO_Address"] = nz.get("icao_address")
+
+    # --------------------------------------------------
+    # CANADA ENRICHMENT (SAFE)
+    # --------------------------------------------------
+    ca = {}
+
+    if reg.startswith("C-"):
+        ca_row = db.session.execute(
+            text("""
+                SELECT *
+                FROM canada
+                WHERE UPPER(TRIM(registration)) = :reg
+                LIMIT 1
+            """),
+            {"reg": reg},
+        ).fetchone()
+
+        if ca_row:
+            ca = dict(ca_row._mapping)
+
+            if not aircraft.get("MSN"):
+                aircraft["MSN"] = ca.get("msn")
+
+            if not aircraft.get("Aircraft_Type"):
+                aircraft["Aircraft_Type"] = ca.get("aircraftmodel")
+
+            if not aircraft.get("Manufacture_Year"):
+                aircraft["Manufacture_Year"] = ca.get("yearmanu")
+
+            if not aircraft.get("Engine_Type"):
+                aircraft["Engine_Type"] = ca.get("enginetype")
+
+    # --------------------------------------------------
+    # MANUAL REGISTRY ENRICHMENT (SAFE)
+    # --------------------------------------------------
+    manual = {}
+
+    manual_row = db.session.execute(
+        text("""
+            SELECT *
+            FROM aircraft_manual_registry
+            WHERE registration = :reg
+            LIMIT 1
+        """),
+        {"reg": reg},
+    ).fetchone()
+
+    if manual_row:
+        manual = dict(manual_row._mapping)
+
+        if not aircraft.get("MSN"):
+            aircraft["MSN"] = manual.get("serial_number")
+
+        if not aircraft.get("Manufacture_Year"):
+            aircraft["Manufacture_Year"] = manual.get("year")
+
+        if not aircraft.get("Engine_Type"):
+            aircraft["Engine_Type"] = manual.get("engine")
+
     # Times seen
     times_seen = db.session.execute(
         text("SELECT COUNT(*) FROM flights WHERE AircraftID = :id"),
@@ -223,13 +372,7 @@ def aircraft_info(aircraft_id):
         {"id": aircraft_id},
     ).scalar()
 
-    if last_flight_ts:
-        if isinstance(last_flight_ts, date) and not isinstance(last_flight_ts, datetime):
-            last_flight_ts = datetime.combine(last_flight_ts, datetime.min.time())
-        loc = convert_to_local(last_flight_ts)
-        aircraft["Last_Sighted_Display"] = loc.strftime("%d-%m-%Y %H:%M:%S") if loc else "Unknown"
-    else:
-        aircraft["Last_Sighted_Display"] = "Unknown"
+    aircraft["Last_Sighted_Display"] = format_display_dt(last_flight_ts)
 
     # Latest flight
     latest_flight = db.session.execute(
@@ -285,13 +428,7 @@ def aircraft_info(aircraft_id):
 
     # Time formatting
     for fld in ("First_Sighted", "Aircraft_Updated"):
-        ts = aircraft.get(fld)
-        if isinstance(ts, date) and not isinstance(ts, datetime):
-            ts = datetime.combine(ts, datetime.min.time())
-        loc = convert_to_local(ts) if ts else None
-        aircraft[f"{fld}_Display"] = (
-            loc.strftime("%d-%m-%Y %H:%M:%S") if loc else "Unknown"
-        )
+        aircraft[f"{fld}_Display"] = format_display_dt(aircraft.get(fld))
 
     # ---------------------------------------------------------------------------
     # Build image list for carousel
@@ -341,7 +478,7 @@ def aircraft_info(aircraft_id):
             text(
                 """
                 SELECT ao.OwnerID, ao.From_Date, ao.To_Date, ao.Notes,
-                       al.AirlineName
+                       COALESCE(al.AirlineName, ao.airline_name_snapshot, 'Unknown') AS AirlineName
                 FROM aircraft_owners ao
                 LEFT JOIN airlines al ON ao.AirlineID = al.AirlineID
                 WHERE ao.AircraftID = :id
@@ -371,13 +508,7 @@ def aircraft_info(aircraft_id):
     history = []
     for rec in hist:
         d = dict(rec._mapping)
-        ts = d.get("Timestamp")
-        if isinstance(ts, date) and not isinstance(ts, datetime):
-            ts = datetime.combine(ts, datetime.min.time())
-        loc = convert_to_local(ts) if ts else None
-        d["Timestamp_Display"] = (
-            loc.strftime("%d-%m-%Y %H:%M:%S") if loc else "Unknown"
-        )
+        d["Timestamp_Display"] = format_display_dt(d.get("Timestamp"))
         d["Spotted_At"] = d.get("Spotted_At") or "Unknown"
         history.append(d)
 
@@ -388,6 +519,12 @@ def aircraft_info(aircraft_id):
     return render_template(
         "aircraft_info.html",
         aircraft=aircraft,
+        casa=casa,
+        us=us,
+        acft=acft,
+        nz=nz,
+        ca=ca,
+        manual=manual,
         ownership_history=ownership_history,
         flight_history=paged,
         current_page=page,
@@ -395,6 +532,7 @@ def aircraft_info(aircraft_id):
         current_year=datetime.now().year,
         selected_theme=get_current_theme(),
         cache_bust=int(datetime.utcnow().timestamp()),
+        image_import_folder=load_settings().get("aircraft_image_import_folder", "/app/static/uploads/aircraft_imports"),
     )
 
 
@@ -423,59 +561,114 @@ def transfer_ownership(aircraft_id: int):
 
     aircraft = dict(row._mapping)
 
+    # Fetch current open operator from history (more reliable than aircraft.AirlineID)
+    open_row = db.session.execute(
+        text(
+            """
+            SELECT ao.AirlineID, ao.airline_name_snapshot, ao.From_Date
+            FROM aircraft_owners ao
+            WHERE ao.AircraftID = :id AND ao.To_Date IS NULL
+            ORDER BY ao.From_Date DESC
+            LIMIT 1
+            """
+        ),
+        {"id": aircraft_id},
+    ).fetchone()
+    current_operator = dict(open_row._mapping) if open_row else None
+
     airline_rows = db.session.execute(
-        text("SELECT AirlineID, AirlineName FROM airlines ORDER BY AirlineName")
+        text("SELECT AirlineID, AirlineName FROM airlines WHERE Ceased_Operations = 0 ORDER BY AirlineName")
     ).fetchall()
     airlines = [dict(r._mapping) for r in airline_rows]
 
     if request.method == "POST":
-        new_airline_id = request.form.get("new_airline_id")
+        new_airline_id = request.form.get("new_airline_id") or None
         transfer_date  = request.form.get("transfer_date")
-        notes          = request.form.get("notes", "").strip()
+        entity_name    = request.form.get("entity_name", "").strip() or None
+        notes          = request.form.get("notes", "").strip() or None
 
-        if not new_airline_id or not transfer_date:
-            flash("New owner and transfer date are required.", "danger")
+        if not transfer_date:
+            flash("Transfer date is required.", "danger")
             return render_template(
                 "transfer_ownership.html",
                 aircraft=aircraft,
+                current_operator=current_operator,
                 airlines=airlines,
                 selected_theme=get_current_theme(),
             )
 
+        # Duplicate guard — same airline (or both non-airline) already open
+        if current_operator:
+            same_airline = (
+                new_airline_id is not None
+                and current_operator["AirlineID"] is not None
+                and int(new_airline_id) == int(current_operator["AirlineID"])
+            )
+            both_non_airline = (
+                new_airline_id is None
+                and current_operator["AirlineID"] is None
+            )
+            if same_airline or both_non_airline:
+                flash("That operator is already recorded as the current operator for this aircraft.", "warning")
+                return render_template(
+                    "transfer_ownership.html",
+                    aircraft=aircraft,
+                    current_operator=current_operator,
+                    airlines=airlines,
+                    selected_theme=get_current_theme(),
+                )
+
         try:
+            # Close current operator record
             db.session.execute(
                 text(
-                    """
-                    UPDATE aircraft_owners
-                    SET To_Date = :transfer_date
-                    WHERE AircraftID = :aircraft_id AND To_Date IS NULL
-                    """
+                    "UPDATE aircraft_owners "
+                    "SET To_Date = :transfer_date "
+                    "WHERE AircraftID = :aircraft_id AND To_Date IS NULL"
                 ),
                 {"transfer_date": transfer_date, "aircraft_id": aircraft_id},
             )
 
+            # Determine snapshot name — airline name if linked, entity_name if not
+            if new_airline_id:
+                snap = db.session.execute(
+                    text("SELECT AirlineName FROM airlines WHERE AirlineID = :id"),
+                    {"id": new_airline_id},
+                ).scalar()
+            else:
+                snap = entity_name  # e.g. "Phoenix Aviation Capital"
+
+            # Build combined notes
+            combined_notes = notes
+            if entity_name and new_airline_id:
+                combined_notes = f"{entity_name} — {notes}" if notes else entity_name
+            elif entity_name and not new_airline_id:
+                combined_notes = f"{entity_name} — {notes}" if notes else entity_name
+
+            # Open new operator record (airline_id may be NULL for non-airline entities)
             db.session.execute(
                 text(
-                    """
-                    INSERT INTO aircraft_owners (AircraftID, AirlineID, From_Date, To_Date, Notes)
-                    VALUES (:aircraft_id, :airline_id, :from_date, NULL, :notes)
-                    """
+                    "INSERT INTO aircraft_owners "
+                    "(AircraftID, AirlineID, airline_name_snapshot, From_Date, To_Date, Notes) "
+                    "VALUES (:aircraft_id, :airline_id, :snap, :from_date, NULL, :notes)"
                 ),
                 {
                     "aircraft_id": aircraft_id,
                     "airline_id":  new_airline_id,
+                    "snap":        snap,
                     "from_date":   transfer_date,
-                    "notes":       notes or None,
+                    "notes":       combined_notes,
                 },
             )
 
+            # Update aircraft current operator
             db.session.execute(
                 text("UPDATE aircraft SET AirlineID = :airline_id WHERE AircraftID = :aircraft_id"),
                 {"airline_id": new_airline_id, "aircraft_id": aircraft_id},
             )
 
             db.session.commit()
-            flash("Ownership transfer recorded successfully.", "success")
+            flash("Operator transfer recorded successfully.", "success")
             return redirect(url_for("aircraft.aircraft_info", aircraft_id=aircraft_id))
 
         except Exception as e:
@@ -486,6 +679,7 @@ def transfer_ownership(aircraft_id: int):
     return render_template(
         "transfer_ownership.html",
         aircraft=aircraft,
+        current_operator=current_operator,
         airlines=airlines,
         selected_theme=get_current_theme(),
     )
@@ -539,9 +733,6 @@ def edit_aircraft(aircraft_id: int):
         airline_id_raw = form.get("AirlineID") or ""
         airline_id = int(airline_id_raw) if airline_id_raw.isdigit() else None
 
-        times_seen_raw = (form.get("Times_Seen") or "").strip()
-        times_seen = int(times_seen_raw) if times_seen_raw.isdigit() else 1
-
         manufacture_year_raw = form.get("Manufacture_Year") or ""
         manufacture_year = (
             int(manufacture_year_raw)
@@ -575,7 +766,6 @@ def edit_aircraft(aircraft_id: int):
                         MSN              = :MSN,
                         Category         = :Category,
                         Country_of_Reg   = :Country_of_Reg,
-                        Times_Seen       = :Times_Seen,
                         Manufacture_Year = :Manufacture_Year,
                         Manufacture_Month= :Manufacture_Month,
                         ICAO_Address     = :ICAO_Address,
@@ -595,7 +785,6 @@ def edit_aircraft(aircraft_id: int):
                     "MSN": msn,
                     "Category": category,
                     "Country_of_Reg": country_of_reg,
-                    "Times_Seen": times_seen,
                     "Manufacture_Year": manufacture_year,
                     "Manufacture_Month": manufacture_month,
                     "ICAO_Address": icao_address,
@@ -614,11 +803,11 @@ def edit_aircraft(aircraft_id: int):
                         """
                         INSERT INTO flights (
                             AircraftID, AirlineID, FlightNumber, Registration, MSN,
-                            Aircraft_Type, Times_Seen, Departure, Arrival,
+                            Aircraft_Type, Departure, Arrival,
                             Country_of_Reg, Timestamp, Spotted_At
                         ) VALUES (
                             :AircraftID, :AirlineID, :FlightNumber, :Registration, :MSN,
-                            :Aircraft_Type, :Times_Seen, :Departure, :Arrival,
+                            :Aircraft_Type, :Departure, :Arrival,
                             :Country_of_Reg, :Timestamp, :Spotted_At
                         )
                         """
@@ -630,7 +819,6 @@ def edit_aircraft(aircraft_id: int):
                         "Registration": registration,
                         "MSN": msn,
                         "Aircraft_Type": aircraft_type,
-                        "Times_Seen": times_seen,
                         "Departure": departure,
                         "Arrival": arrival,
                         "Country_of_Reg": country_of_reg,
