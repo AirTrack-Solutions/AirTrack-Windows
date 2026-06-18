@@ -177,3 +177,8 @@ app/*.bak.sql
 # Installer build files
 !gates/gate3/setup.iss
 !gates/gate3/wait_for_db.ps1
+
+# Installer build artifacts — do not commit
+AirTrackSetup.exe
+builds/
+installer_records.json
