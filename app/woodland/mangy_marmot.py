@@ -12,7 +12,7 @@ Responsibilities:
        request pickup → retrieve package → verify signature + SHA-256 → install → confirm.
 
 Environment:
-  WOMBAT_URL              URL of Wombat API server (e.g. http://192.168.0.201:5200)
+  WOMBAT_URL              URL of Wombat API server (e.g. http://192.168.0.153:5200)
   AIRTRACK_HOME           Root data directory (capabilities, downloads, staging, etc.)
   AIRTRACK_CUSTOMER_ID    Customer identifier registered in the Wombat warehouse
   AIRTRACK_LICENSE_KEY    License key (sent in reports; optional for core delivery)
