@@ -15,3 +15,5 @@ Validate artifact and isolated Windows startup.
 - 2026-10-25: Created before adding compiled-app artifact. Existing workflow read; no historical changes inferred.
 
 - 2026-10-25: Added compiled application artifact without credentials/config/license sidecars, allowing smoke testing away from existing installations. Installer build/release steps unchanged. Recovery: remove added upload step. Workflow dispatched on feature branch; verification pending.
+
+- 2026-10-25: Added --collect-all mariadb to carry connector package/native dependencies into frozen app after actual Windows smoke test exposed missing import. Application-artifact build40189455445 had succeeded but runtime failed. Rebuild pending.
