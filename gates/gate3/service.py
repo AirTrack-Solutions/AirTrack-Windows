@@ -72,6 +72,15 @@ def _load_config():
         _default_home = '/airtrack_data'
     os.environ.setdefault('AIRTRACK_HOME', cfg.get('app', 'data_dir', fallback=_default_home))
 
+    # Package-selected airports are read before Flask imports the NOTAM routes.
+    airports = cfg.get('notams', 'airports', fallback='YSSY,YSBK,YSRI,YWLM')
+    codes = [code.strip().upper() for code in airports.split(',')]
+    if (not 1 <= len(codes) <= 6 or len(set(codes)) != len(codes)
+            or any(len(code) != 4 or not code.isascii() or not code.isalpha() for code in codes)):
+        raise ValueError('airtrack.cfg: choose one to six distinct four-letter NOTAM ICAO codes')
+    os.environ.setdefault('NOTAM_PRIMARY_AIRPORTS', ','.join(codes))
+    os.environ.setdefault('NOTAM_HOME_ICAOS', ','.join(codes))
+
     # Log dir alongside the executable so it survives reinstalls
     log_dir = exe_dir / 'logs'
     log_dir.mkdir(exist_ok=True)
