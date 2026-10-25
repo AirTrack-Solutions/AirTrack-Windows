@@ -7,13 +7,13 @@ Last Updated: 2026-10-25
 
 Added existing Logbook airport-card display and safety footer to Windows, with local jquery-3.7.1.min.js reference; omitted glossary link because Windows has no glossary endpoint. Uses notam_airports from runtime config, not a fixed card count.
 
-Template absent from Windows source; existing database-backed route expects it.
+The airport-card template is included and uses configured airport choices.
 
 ## Known Issues
-NOTAM page unavailable in current Windows build.
+NOTAM page availability verified; full installer wizard/service-mode testing remains pending.
 
 ## Future Work
-Wire existing NOTAM page into V1 and verify on Hayley.
+Run a full isolated installer/service-mode test when planned.
 
 ## Entry Log
 - 2026-10-25: Created before change after actual Hayley test returned404; inspected main blueprint registration, real notam_routes.py and server template. No historical changes inferred.

@@ -7,13 +7,13 @@ Last Updated: 2026-10-25
 
 Imported and registered the existing notam_bp alongside core blueprints. No optional-module scanner dependency; header already shows NOTAMs when endpoint exists.
 
-Existing main app registers core blueprints but omits the database-backed NOTAM blueprint; /notams returned404 in actual frozen Windows test.
+The database-backed NOTAM blueprint is registered alongside core routes.
 
 ## Known Issues
-NOTAM page unavailable in current Windows build.
+NOTAM page availability verified; full installer wizard/service-mode testing remains pending.
 
 ## Future Work
-Wire existing NOTAM page into V1 and verify on Hayley.
+Run a full isolated installer/service-mode test when planned.
 
 ## Entry Log
 - 2026-10-25: Created before change after actual Hayley test returned404; inspected main blueprint registration, real notam_routes.py and server template. No historical changes inferred.
