@@ -1,0 +1,515 @@
+<!--
+  AirTrack 1.0.0
+  Copyright (c) 2025 Trevor ("Subhuti"). All rights reserved.
+  SPDX-License-Identifier: LicenseRef-AirTrack-Proprietary-NC
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NOTAMs — AirTrack</title>
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/footer.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/background.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/themes.css') }}?v={{ cache_bust }}">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <style>
+    /* ── Page ───────────────────────────────────────────────── */
+    body { font-family: "Times New Roman", Times, serif; }
+    .notam-page { padding: 20px 0 70px; }
+
+    h1.notam-title {
+      font-size: 1.4rem; font-weight: bold; letter-spacing: 0.06em;
+      text-transform: uppercase; margin-bottom: 4px;
+      color: #fff; text-shadow: 1px 1px 4px rgba(0,0,0,0.8);
+    }
+    .notam-subtitle {
+      font-size: 0.85rem; color: #fff;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8); margin-bottom: 18px;
+    }
+    .notam-subtitle a { color: #d0e8f0; }
+    .notam-subtitle a:hover { color: #fff; }
+
+    /* ── Stats chips ─────────────────────────────────────────── */
+    .notam-stats { display: flex; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .stat-chip {
+      display: flex; align-items: center; gap: 6px; font-size: 0.82rem;
+      padding: 4px 12px; border-radius: 20px;
+      background: #f9f9f9; border: 1px solid #b0c8d4; color: #1b4f62;
+    }
+    .stat-chip .count { font-weight: bold; font-size: 1rem; }
+    .chip-critical    { border-color: #c0392b; color: #c0392b; background: #fdf5f5; }
+    .chip-significant { border-color: #e67e22; color: #c0622a; background: #fdf8f4; }
+    .chip-minor       { border-color: #2980b9; color: #1a5f8a; background: #f4f8fd; }
+    .chip-info        { border-color: #b0c8d4; color: #5a7a8a; }
+
+    /* ── Airport card grid ───────────────────────────────────── */
+    .airport-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+    }
+    @media (max-width: 640px) {
+      .airport-grid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Airport card ────────────────────────────────────────── */
+    .airport-card {
+      border-radius: 8px;
+      border: 1px solid #b0c8d4;
+      background: #f9f9f9;
+      overflow: hidden;
+      min-height: 160px;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s;
+    }
+
+    /* Severity top stripe */
+    .airport-card.sev-CRITICAL    { border-top: 4px solid #c0392b; }
+    .airport-card.sev-SIGNIFICANT { border-top: 4px solid #e67e22; }
+    .airport-card.sev-MINOR       { border-top: 4px solid #2980b9; }
+    .airport-card.sev-INFORMATIONAL { border-top: 4px solid #b0c8d4; }
+    .airport-card.sev-NONE        { border-top: 4px solid #e0e0e0; }
+
+    @keyframes criticalPulse {
+      0%, 100% { border-top-color: #c0392b; }
+      50%       { border-top-color: #ff6b6b; }
+    }
+    .airport-card.sev-CRITICAL.active-now {
+      animation: criticalPulse 2s ease-in-out infinite;
+      background: #fdf5f5;
+    }
+
+    /* ── Card header: ICAO + nav arrows ─────────────────────── */
+    .card-header-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 14px 6px;
+      border-bottom: 1px solid #e0e8ec;
+    }
+    .card-icao {
+      font-size: 1.1rem;
+      font-weight: bold;
+      color: #1b4f62;
+      letter-spacing: 0.08em;
+      flex: 1;
+    }
+    .card-counter {
+      font-size: 0.75rem;
+      color: #7a9aaa;
+      margin: 0 6px;
+    }
+    .nav-arrow {
+      background: none;
+      border: 1px solid #b0c8d4;
+      border-radius: 4px;
+      color: #1b4f62;
+      cursor: pointer;
+      padding: 2px 8px;
+      font-size: 0.85rem;
+      line-height: 1.4;
+      transition: background 0.12s;
+    }
+    .nav-arrow:hover { background: #e8f0f4; }
+    .nav-arrow:disabled { opacity: 0.3; cursor: default; }
+
+    /* ── Card body ───────────────────────────────────────────── */
+    .card-body-notam {
+      padding: 12px 14px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .card-severity {
+      font-size: 0.72rem;
+      font-weight: bold;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 3px;
+      display: inline-block;
+      align-self: flex-start;
+    }
+    .sev-badge-CRITICAL    { background: #fdecea; color: #c0392b; border: 1px solid #c0392b; }
+    .sev-badge-SIGNIFICANT { background: #fef3ec; color: #e67e22; border: 1px solid #e67e22; }
+    .sev-badge-MINOR       { background: #eaf4fb; color: #2980b9; border: 1px solid #2980b9; }
+    .sev-badge-INFORMATIONAL { background: #f4f9fb; color: #5a7a8a; border: 1px solid #b0c8d4; }
+
+    .card-summary {
+      font-size: 0.9rem;
+      color: #163f52;
+      line-height: 1.4;
+      flex: 1;
+    }
+
+    .card-status {
+      font-size: 0.75rem;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+    }
+    .status-active  { color: #1e8449; }
+    .status-future  { color: #7a9aaa; }
+
+    .card-valid {
+      font-size: 0.72rem;
+      color: #7a9aaa;
+    }
+
+    /* ── Empty / loading states ──────────────────────────────── */
+    .card-empty {
+      padding: 30px 14px;
+      text-align: center;
+      color: #b0c8d4;
+      font-size: 0.85rem;
+      font-style: italic;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Full list panel (expandable below grid) ─────────────── */
+    .full-list-toggle {
+      margin-top: 16px;
+      margin-bottom: 8px;
+    }
+    .btn-list-toggle {
+      font-size: 0.82rem;
+      padding: 5px 16px;
+      background: #fff;
+      color: #1b4f62;
+      border: 1px solid #b0c8d4;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-list-toggle:hover { background: #f4f9fb; }
+
+    .notam-full-list { display: none; }
+    .notam-full-list.open { display: block; }
+
+    /* Full list cards */
+    .notam-row {
+      border-radius: 5px;
+      border: 1px solid #b0c8d4;
+      border-left: 4px solid #b0c8d4;
+      background: #f9f9f9;
+      padding: 8px 14px;
+      margin-bottom: 6px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: #1b4f62;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .notam-row.sev-CRITICAL    { border-left-color: #c0392b; }
+    .notam-row.sev-SIGNIFICANT { border-left-color: #e67e22; }
+    .notam-row.sev-MINOR       { border-left-color: #2980b9; }
+    .notam-row .row-id    { font-family: monospace; color: #7a9aaa; min-width: 80px; font-size: 0.78rem; }
+    .notam-row .row-icao  { font-weight: bold; min-width: 48px; }
+    .notam-row .row-summ  { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .notam-row .row-badge { font-size: 0.68rem; padding: 1px 6px; border-radius: 3px; flex-shrink: 0; }
+    .notam-row .row-time  { font-size: 0.7rem; color: #7a9aaa; flex-shrink: 0; }
+
+    .notam-row-detail {
+      display: none;
+      padding: 8px 14px 12px;
+      background: #f9f9f9;
+      border: 1px solid #b0c8d4;
+      border-top: none;
+      border-radius: 0 0 5px 5px;
+      margin-top: -6px;
+      margin-bottom: 6px;
+      font-size: 0.82rem;
+      color: #1b4f62;
+    }
+    .notam-row-detail.open { display: block; }
+    .notam-raw {
+      font-family: monospace; font-size: 0.8rem; background: #f4f9fb;
+      border: 1px solid #b0c8d4; border-radius: 4px;
+      padding: 8px 12px; white-space: pre-wrap; word-break: break-word;
+      margin-top: 8px; line-height: 1.5; color: #163f52;
+    }
+
+    /* ── Safety footer ───────────────────────────────────────── */
+    .safety-footer {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #1b4f62; color: #fff;
+      font-size: 0.75rem; padding: 6px 20px;
+      text-align: center; letter-spacing: 0.02em; z-index: 1000;
+    }
+    .safety-footer span { color: rgba(255,255,255,0.5); }
+
+    /* ── Last updated ────────────────────────────────────────── */
+    .last-updated { font-size: 0.75rem; color: #fff; text-shadow: 1px 1px 3px rgba(0,0,0,0.7); }
+  </style>
+</head>
+<body class="theme-{{ selected_theme }}">
+  <div class="background"></div>
+  {% include 'header.html' %}
+
+  <div class="container-fluid notam-page">
+    <h1 class="notam-title">NOTAMs</h1>
+    <p class="notam-subtitle">
+      Notices to Air Missions — informational display only &nbsp;·&nbsp;
+
+      &nbsp;&nbsp;
+      <span class="last-updated" id="last-updated"></span>
+    </p>
+
+    <!-- Stats chips -->
+    <div class="notam-stats">
+      <div class="stat-chip chip-critical">
+        <span class="count" id="count-critical">—</span> Critical
+      </div>
+      <div class="stat-chip chip-significant">
+        <span class="count" id="count-significant">—</span> Significant
+      </div>
+      <div class="stat-chip chip-minor">
+        <span class="count" id="count-minor">—</span> Minor
+      </div>
+      <div class="stat-chip chip-info">
+        <span class="count" id="count-info">—</span> Informational
+      </div>
+    </div>
+
+    <!-- 4-airport carousel grid -->
+    <div class="airport-grid" id="airport-grid">
+      {% for ap in notam_airports %}
+      <div class="airport-card sev-NONE" id="card-{{ ap }}">
+        <div class="card-header-row">
+          <span class="card-icao">{{ ap }}</span>
+          <button class="nav-arrow" id="prev-{{ ap }}" onclick="navCard('{{ ap }}',-1)" disabled>&#9664;</button>
+          <span class="card-counter" id="counter-{{ ap }}"></span>
+          <button class="nav-arrow" id="next-{{ ap }}" onclick="navCard('{{ ap }}',1)" disabled>&#9654;</button>
+        </div>
+        <div class="card-body-notam" id="body-{{ ap }}">
+          <div class="card-empty">Loading…</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Full list toggle -->
+    <div class="full-list-toggle">
+      <button class="btn-list-toggle" onclick="toggleFullList()">
+        ▼ Show full NOTAM list
+      </button>
+    </div>
+
+    <div class="notam-full-list" id="full-list">
+      <div id="full-list-inner"></div>
+    </div>
+
+  </div>
+
+  <!-- Safety footer -->
+  <div class="safety-footer">
+    ⚠ AirTrack NOTAM data is for informational purposes only —
+    <span>not for flight planning or operational decisions.</span>
+    Always consult official sources: <strong>NAIPS</strong> (Australia).
+  </div>
+
+  <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/theme_loader.js') }}"></script>
+  <script>
+  // ── Config ────────────────────────────────────────────────────────────────
+  const AIRPORTS = {{ notam_airports | tojson }};
+
+  // Per-airport state: { notams: [], index: 0 }
+  const state = {};
+  AIRPORTS.forEach(ap => { state[ap] = { notams: [], index: 0 }; });
+
+  // ── Helpers ───────────────────────────────────────────────────────────────
+  const SEV_ORDER = ["CRITICAL", "SIGNIFICANT", "MINOR", "INFORMATIONAL"];
+
+  function fmtTime(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (isNaN(d)) return iso;
+    // Show as HH:MM UTC day-mon
+    const pad = n => String(n).padStart(2, "0");
+    const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC ${d.getUTCDate()} ${months[d.getUTCMonth()]}`;
+  }
+
+  function isActive(n) {
+    const now = Date.now();
+    const from = n.effective_from ? new Date(n.effective_from).getTime() : 0;
+    const to   = n.effective_to   ? new Date(n.effective_to).getTime()   : Infinity;
+    const perm = n.is_permanent;
+    if (from > now) return false;
+    if (!perm && to < now) return false;
+    return true;
+  }
+
+  function topSeverity(notams) {
+    for (const sev of SEV_ORDER) {
+      if (notams.some(n => n.severity === sev && isActive(n))) return sev;
+    }
+    if (notams.length) return notams[0].severity || "INFORMATIONAL";
+    return "NONE";
+  }
+
+  function shortSummary(n) {
+    const body = n.summary || n.text_raw || "";
+    // Strip leading ICAO and brackets, cap at 120 chars
+    const clean = body.replace(/^\[.*?\]\s*/g, "").trim();
+    return clean.length > 120 ? clean.slice(0, 117) + "…" : clean;
+  }
+
+  // ── Render a single airport card slot ────────────────────────────────────
+  function renderCard(ap) {
+    const { notams, index } = state[ap];
+    const card = document.getElementById("card-" + ap);
+    const body = document.getElementById("body-" + ap);
+    const counter = document.getElementById("counter-" + ap);
+    const prevBtn = document.getElementById("prev-" + ap);
+    const nextBtn = document.getElementById("next-" + ap);
+
+    if (!notams.length) {
+      card.className = "airport-card sev-NONE";
+      body.innerHTML = '<div class="card-empty">No active NOTAMs</div>';
+      counter.textContent = "";
+      prevBtn.disabled = true;
+      nextBtn.disabled = true;
+      return;
+    }
+
+    const n = notams[index];
+    const sev = n.severity || "INFORMATIONAL";
+    const active = isActive(n);
+    const activeClass = (sev === "CRITICAL" && active) ? " active-now" : "";
+    const topSev = topSeverity(notams);
+
+    card.className = "airport-card sev-" + topSev + activeClass;
+
+    counter.textContent = `${index + 1}/${notams.length}`;
+    prevBtn.disabled = (index === 0);
+    nextBtn.disabled = (index === notams.length - 1);
+
+    const validLine = n.is_permanent
+      ? "Permanent"
+      : (n.effective_to ? "Valid until " + fmtTime(n.effective_to) : "");
+
+    body.innerHTML = `
+      <span class="card-severity sev-badge-${sev}">${sev}</span>
+      <div class="card-summary">${shortSummary(n)}</div>
+      <div class="card-status ${active ? 'status-active' : 'status-future'}">
+        ${active ? "● Active now" : "○ Scheduled"}
+      </div>
+      ${validLine ? `<div class="card-valid">${validLine}</div>` : ""}
+    `;
+  }
+
+  // ── Navigate within an airport card ──────────────────────────────────────
+  function navCard(ap, dir) {
+    const s = state[ap];
+    const newIdx = s.index + dir;
+    if (newIdx < 0 || newIdx >= s.notams.length) return;
+    s.index = newIdx;
+    renderCard(ap);
+  }
+
+  // ── Fetch NOTAMs for one airport ─────────────────────────────────────────
+  function fetchAirport(ap) {
+    return fetch("/api/notams/live?icao=" + ap + "&limit=100")
+      .then(r => r.json())
+      .then(data => {
+        const notams = (data.notams || []).sort((a, b) => {
+          // Sort: active first, then by severity
+          const aAct = isActive(a) ? 0 : 1;
+          const bAct = isActive(b) ? 0 : 1;
+          if (aAct !== bAct) return aAct - bAct;
+          return SEV_ORDER.indexOf(a.severity) - SEV_ORDER.indexOf(b.severity);
+        });
+        state[ap].notams = notams;
+        state[ap].index = 0;
+        renderCard(ap);
+        return notams;
+      })
+      .catch(() => {
+        state[ap].notams = [];
+        renderCard(ap);
+        return [];
+      });
+  }
+
+  // ── Load all airports ─────────────────────────────────────────────────────
+  function loadAll() {
+    Promise.all(AIRPORTS.map(ap => fetchAirport(ap))).then(results => {
+      updateStats(results.flat());
+      renderFullList(results.flat());
+      document.getElementById("last-updated").textContent =
+        "Updated " + new Date().toLocaleTimeString();
+    });
+  }
+
+  // ── Stats chips ───────────────────────────────────────────────────────────
+  function updateStats(all) {
+    const counts = { CRITICAL: 0, SIGNIFICANT: 0, MINOR: 0, INFORMATIONAL: 0 };
+    all.forEach(n => { if (counts[n.severity] !== undefined) counts[n.severity]++; });
+    document.getElementById("count-critical").textContent    = counts.CRITICAL;
+    document.getElementById("count-significant").textContent = counts.SIGNIFICANT;
+    document.getElementById("count-minor").textContent       = counts.MINOR;
+    document.getElementById("count-info").textContent        = counts.INFORMATIONAL;
+  }
+
+  // ── Full list ─────────────────────────────────────────────────────────────
+  function toggleFullList() {
+    const panel = document.getElementById("full-list");
+    const btn = document.querySelector(".btn-list-toggle");
+    const open = panel.classList.toggle("open");
+    btn.textContent = open ? "▲ Hide full NOTAM list" : "▼ Show full NOTAM list";
+  }
+
+  function renderFullList(all) {
+    const el = document.getElementById("full-list-inner");
+    if (!all.length) {
+      el.innerHTML = '<div style="color:#7a9aaa;padding:20px;text-align:center;">No NOTAMs.</div>';
+      return;
+    }
+    el.innerHTML = all.map((n, i) => {
+      const sev = n.severity || "MINOR";
+      const active = isActive(n);
+      const detailId = "rd-" + i;
+      return `
+        <div class="notam-row sev-${sev}" onclick="toggleRowDetail('${detailId}')">
+          <span class="row-id">${n.notam_id || "—"}</span>
+          <span class="row-icao">${n.primary_icao || "—"}</span>
+          <span class="row-summ">${shortSummary(n)}</span>
+          <span class="row-badge sev-badge-${sev}">${sev}</span>
+          <span class="row-time">${fmtTime(n.effective_from)}</span>
+        </div>
+        <div class="notam-row-detail" id="${detailId}">
+          <div><strong>Valid:</strong> ${fmtTime(n.effective_from)} → ${n.is_permanent ? "PERMANENT" : fmtTime(n.effective_to)}</div>
+          <div><strong>Category:</strong> ${n.category || "—"} &nbsp; <strong>Active:</strong> ${active ? "Yes" : "No"}</div>
+          <div class="notam-raw">${(n.text_raw || "").replace(/</g,"&lt;")}</div>
+        </div>`;
+    }).join("");
+  }
+
+  function toggleRowDetail(id) {
+    document.getElementById(id).classList.toggle("open");
+  }
+
+  // ── Boot ──────────────────────────────────────────────────────────────────
+  loadAll();
+  // Auto-refresh every 5 minutes
+  setInterval(loadAll, 300000);
+  </script>
+
+  {% if aria_enabled %}
+  {% set aria_page_context = 'notams' %}
+  {% set aria_banner = '⚠ This is not official data. For operational decisions always use NAIPS or your national aviation authority.' %}
+  {% if aria_enabled %}{% include 'aria_chat.html' %}{% endif %}
+  {% endif %}
+</body>
+</html>
