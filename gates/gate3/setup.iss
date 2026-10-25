@@ -130,7 +130,8 @@ begin
 
     { Copy sidecar license.lic }
     LicSrc  := ExpandConstant('{src}\license.lic');
-    LicDest := ExpandConstant('{app}\_internal\app\config\license.lic');
+    LicDest := ExpandConstant('{app}\_internal\config\license.lic');
+    ForceDirectories(ExtractFileDir(LicDest));
     if FileExists(LicSrc) then
       FileCopy(LicSrc, LicDest, False);
 
