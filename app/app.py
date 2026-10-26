@@ -1228,6 +1228,7 @@ from routes.airports_api import bp as airports_api_bp
 from routes.manual_entry_routes import manual_entry_bp
 from routes.registry_routes import registry_bp
 from routes.notam_routes import notam_bp
+from routes.metar_routes import metars_bp
 _ARIA_ENABLED = os.getenv("ARIA_ENABLED", "0").lower() in ("1", "true", "yes")
 if _ARIA_ENABLED:
     from routes.aria_routes import aria_bp
@@ -1257,6 +1258,7 @@ app.register_blueprint(admin_tools_routes.admin_tools_bp)
 app.register_blueprint(manual_entry_bp)
 app.register_blueprint(registry_bp)
 app.register_blueprint(notam_bp)
+app.register_blueprint(metars_bp)
 if _ARIA_ENABLED:
     app.register_blueprint(aria_bp)
     csrf.exempt(aria_bp)

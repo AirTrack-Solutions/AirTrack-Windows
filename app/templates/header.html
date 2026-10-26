@@ -44,6 +44,7 @@
             <a href="{{ url_for('add_aircraft.add_aircraft') }}">Add Aircraft</a>
             <a href="{{ url_for('reports') }}">Reports</a>
             {% if endpoint_exists('notams.notams_page') %}<a href="{{ url_for('notams.notams_page') }}">NOTAMs</a>{% endif %}
+            {% if endpoint_exists('metars.metars') %}<a href="{{ url_for('metars.metars') }}">METARs</a>{% endif %}
             <a href="{{ url_for('aircraft.upload_aircraft_image') }}">Upload Aircraft Image</a>
             <a href="https://www.flightradar24.com/" target="_blank" rel="noopener noreferrer">Live Flights</a>
             <a href="{{ url_for('admin.user_guide') }}">User Guide</a>

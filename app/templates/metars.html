@@ -1,0 +1,952 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>METARs — AirTrack Logbook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700;800&family=Barlow:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --ops-bg:      #050b08;
+            --ops-panel:   #0b1510;
+            --ops-panel-2: #101f17;
+            --ops-border:  #1d5f43;
+            --ops-bright:  #6dffb1;
+            --ops-text:    #d7ffe8;
+            --ops-muted:   #7da892;
+            --ops-danger:  #ff5f5f;
+            --ops-warn:    #ffd65f;
+            --ops-ok:      #63ff95;
+            --ops-blue:    #7fb7ff;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body {
+            margin: 0; padding: 0;
+            background: var(--ops-bg);
+            color: var(--ops-text);
+            font-family: 'Barlow', sans-serif;
+            font-weight: 300;
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: var(--ops-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--ops-border); border-radius: 3px; }
+
+        .metars-layout {
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Left sidebar ── */
+        .metar-sidebar {
+            width: 220px;
+            min-width: 180px;
+            background: var(--ops-panel);
+            border-right: 1px solid var(--ops-border);
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .metar-sidebar-header {
+            padding: 1rem 1rem 0.5rem;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: var(--ops-muted);
+            border-bottom: 1px solid var(--ops-border);
+            position: sticky;
+            top: 0;
+            background: var(--ops-panel);
+            z-index: 1;
+        }
+
+        .metar-sidebar-count {
+            display: inline-block;
+            background: var(--ops-bright);
+            color: var(--ops-bg);
+            font-size: 0.65rem;
+            font-weight: 700;
+            border-radius: 10px;
+            padding: 0.05rem 0.45rem;
+            margin-left: 0.4rem;
+            vertical-align: middle;
+        }
+
+        .metar-sidebar-list {
+            list-style: none;
+            margin: 0;
+            padding: 0.4rem 0;
+        }
+
+        .metar-sidebar-list li a {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.55rem 1rem;
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.95rem;
+            font-weight: 600;
+            letter-spacing: 0.04em;
+            color: var(--ops-text);
+            text-decoration: none;
+            transition: background 0.15s, color 0.15s;
+            border-left: 3px solid transparent;
+        }
+
+        .metar-sidebar-list li a:hover {
+            background: var(--ops-panel-2);
+            color: var(--ops-bright);
+            border-left-color: var(--ops-bright);
+        }
+
+        .metar-sidebar-list li a.active {
+            background: rgba(109,255,177,0.08);
+            color: var(--ops-bright);
+            border-left-color: var(--ops-bright);
+        }
+
+        .sidebar-empty {
+            padding: 1.5rem 1rem;
+            font-size: 0.82rem;
+            color: var(--ops-muted);
+        }
+
+        /* ── Station picker ── */
+        .metar-picker {
+            position: relative;
+            padding: 0.6rem 1rem 0.55rem;
+            border-bottom: 1px solid var(--ops-border);
+        }
+
+        .metar-picker input {
+            width: 100%;
+            box-sizing: border-box;
+            background: var(--ops-bg);
+            border: 1px solid var(--ops-border);
+            color: var(--ops-text);
+            font-family: 'Barlow', sans-serif;
+            font-size: 0.82rem;
+            padding: 0.4rem 0.6rem;
+            border-radius: 4px;
+        }
+
+        .metar-picker input:focus {
+            outline: none;
+            border-color: var(--ops-bright);
+        }
+
+        .metar-suggestions {
+            position: absolute;
+            left: 1rem;
+            right: 1rem;
+            top: 100%;
+            background: var(--ops-panel-2);
+            border: 1px solid var(--ops-border);
+            border-top: none;
+            max-height: 240px;
+            overflow-y: auto;
+            z-index: 5;
+            display: none;
+            border-radius: 0 0 4px 4px;
+        }
+
+        .metar-suggestion {
+            padding: 0.45rem 0.6rem;
+            cursor: pointer;
+            font-size: 0.78rem;
+            border-bottom: 1px solid rgba(29,95,67,0.4);
+        }
+
+        .metar-suggestion:last-child { border-bottom: none; }
+
+        .metar-suggestion:hover,
+        .metar-suggestion.active {
+            background: rgba(109,255,177,0.08);
+        }
+
+        .metar-suggestion .code {
+            color: var(--ops-bright);
+            font-weight: 700;
+            margin-right: 0.4rem;
+        }
+
+        .metar-suggestion .name { color: var(--ops-muted); }
+
+        .metar-sidebar-list li {
+            display: flex;
+            align-items: center;
+        }
+
+        .metar-sidebar-list li a { flex: 1; min-width: 0; }
+
+        .metar-remove-btn {
+            background: transparent;
+            border: none;
+            color: var(--ops-muted);
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+            padding: 0 0.9rem;
+            opacity: 0;
+            transition: opacity 0.15s, color 0.15s;
+        }
+
+        .metar-sidebar-list li:hover .metar-remove-btn { opacity: 1; }
+        .metar-remove-btn:hover { color: var(--ops-danger); }
+
+        .metar-picker-status {
+            padding: 0 1rem 0.5rem;
+            font-size: 0.72rem;
+            color: var(--ops-muted);
+            min-height: 1em;
+        }
+
+        /* ── Right pane ── */
+        .metar-main {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem 2rem;
+        }
+
+        .metar-main-empty {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            color: var(--ops-muted);
+            text-align: center;
+            gap: 0.75rem;
+        }
+
+        .metar-main-empty .icon { font-size: 3rem; opacity: 0.4; }
+
+        .metar-heading {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--ops-bright);
+            letter-spacing: 0.06em;
+            margin-bottom: 0.25rem;
+        }
+
+        .metar-meta {
+            font-size: 0.8rem;
+            color: var(--ops-muted);
+            margin-bottom: 1.5rem;
+        }
+
+        .metar-meta a {
+            color: var(--ops-blue);
+            text-decoration: none;
+        }
+
+        .metar-meta a:hover {
+            text-decoration: underline;
+        }
+
+        /* ── Color picker ── */
+        .metar-color-bar {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            margin-bottom: 1rem;
+            font-size: 0.8rem;
+            color: var(--ops-muted);
+        }
+
+        .metar-color-bar input[type="color"] {
+            width: 34px;
+            height: 28px;
+            padding: 0;
+            border: 1px solid var(--ops-border);
+            border-radius: 4px;
+            background: var(--ops-panel);
+            cursor: pointer;
+        }
+
+        /* ── METAR card (native, no third-party widget) ── */
+        .metar-card {
+            background: var(--metar-card-bg, var(--ops-panel));
+            border: 1px solid var(--ops-border);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+            max-width: 1180px;
+            transition: background 0.15s;
+        }
+
+        #metarCard.metar-card-flat {
+            background: transparent;
+            border: none;
+            border-radius: 0;
+            padding: 0;
+            max-width: none;
+        }
+
+        .metar-columns {
+            display: grid;
+            grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.15fr);
+            gap: 0 2rem;
+            align-items: start;
+        }
+
+        .metar-col-left, .metar-col-right {
+            min-width: 0;
+        }
+
+        .metar-col-right {
+            margin-top: 0;
+        }
+
+        .metar-col-right > .metar-section-title:first-child {
+            margin-top: 0;
+        }
+
+        @media (max-width: 900px) {
+            .metar-columns {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metar-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1.1rem;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .metar-station-name {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--ops-text);
+        }
+
+        .metar-flight-cat {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-weight: 800;
+            font-size: 0.85rem;
+            letter-spacing: 0.08em;
+            padding: 0.25rem 0.6rem;
+            border-radius: 5px;
+            color: #06120c;
+            white-space: nowrap;
+        }
+
+        /* ── Top badge strip ── */
+        .metar-badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-bottom: 1.1rem;
+        }
+
+        .metar-badge {
+            flex: 1 1 100px;
+            background: var(--ops-panel-2);
+            border: 1px solid var(--ops-border);
+            border-radius: 8px;
+            padding: 0.5rem 0.7rem;
+        }
+
+        .metar-badge-label {
+            font-size: 0.62rem;
+            font-weight: 700;
+            letter-spacing: 0.07em;
+            text-transform: uppercase;
+            opacity: 0.75;
+            margin-bottom: 0.15rem;
+        }
+
+        .metar-badge-value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .metar-compass {
+            display: inline-block;
+            margin-right: 0.35rem;
+            width: 22px;
+            height: 22px;
+            min-width: 22px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            position: relative;
+            opacity: 0.85;
+        }
+
+        .metar-compass-arrow {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 2px;
+            height: 9px;
+            background: currentColor;
+            transform-origin: bottom center;
+            transform: translate(-50%, -100%) rotate(var(--wind-rot, 0deg));
+        }
+
+        .metar-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem 1.5rem;
+            margin-bottom: 1.1rem;
+        }
+
+        .metar-stat-label {
+            font-size: 0.68rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ops-muted);
+            margin-bottom: 0.15rem;
+        }
+
+        .metar-stat-value {
+            font-size: 1.05rem;
+            font-weight: 600;
+            color: var(--ops-text);
+        }
+
+        .metar-raw {
+            font-family: 'Courier New', monospace;
+            font-size: 0.78rem;
+            background: var(--ops-bg);
+            border: 1px solid var(--ops-border);
+            border-radius: 6px;
+            padding: 0.7rem 0.85rem;
+            color: var(--ops-muted);
+            word-break: break-all;
+            line-height: 1.5;
+        }
+
+        .metar-no-data {
+            max-width: 420px;
+            background: var(--ops-panel);
+            border: 1px solid var(--ops-border);
+            border-radius: 10px;
+            padding: 1.25rem 1.5rem;
+        }
+
+        .metar-no-data p { margin: 0 0 0.75rem; }
+        .metar-no-data p:last-child { margin-bottom: 0; }
+        .metar-no-data a { color: var(--ops-blue); }
+
+        /* ── Narrative summary ── */
+        .metar-summary {
+            font-size: 0.95rem;
+            font-weight: 400;
+            color: var(--ops-text);
+            background: var(--ops-panel-2);
+            border-left: 3px solid var(--ops-bright);
+            border-radius: 0 6px 6px 0;
+            padding: 0.6rem 0.85rem;
+            margin-bottom: 1.1rem;
+        }
+
+        /* ── Glossary tooltips ── */
+        .info-dot {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            border: 1px solid currentColor;
+            font-size: 0.6rem;
+            font-weight: 700;
+            margin-left: 0.3rem;
+            cursor: help;
+            position: relative;
+            opacity: 0.75;
+            vertical-align: middle;
+        }
+        .info-dot[data-tip]:hover::after,
+        .info-dot[data-tip]:focus::after {
+            content: attr(data-tip);
+            position: absolute;
+            bottom: 130%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 220px;
+            background: #06120c;
+            color: var(--ops-text);
+            border: 1px solid var(--ops-border);
+            border-radius: 6px;
+            padding: 0.5rem 0.65rem;
+            font-size: 0.72rem;
+            font-weight: 400;
+            line-height: 1.4;
+            white-space: normal;
+            z-index: 10;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+        }
+        .info-dot[data-tip]:hover::before,
+        .info-dot[data-tip]:focus::before {
+            content: "";
+            position: absolute;
+            bottom: 118%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: var(--ops-border);
+            z-index: 10;
+        }
+
+        /* ── Gauge dials ── */
+        .metar-badge-value.with-gauge {
+            gap: 0.6rem;
+            flex-wrap: wrap;
+        }
+        .metar-gauge {
+            --pct: 0;
+            --gauge-color: var(--ops-bright);
+            width: 46px;
+            height: 46px;
+            min-width: 46px;
+            border-radius: 50%;
+            background: conic-gradient(var(--gauge-color) calc(var(--pct) * 1%), rgba(255,255,255,0.08) 0);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+        .metar-gauge::before {
+            content: "";
+            position: absolute;
+            inset: 5px;
+            border-radius: 50%;
+            background: var(--ops-panel-2);
+        }
+        .metar-gauge-value {
+            position: relative;
+            z-index: 1;
+            font-size: 0.62rem;
+            font-weight: 700;
+            color: var(--ops-text);
+            text-align: center;
+            line-height: 1.15;
+        }
+        .metar-gauge-value small {
+            display: block;
+            font-weight: 400;
+            opacity: 0.7;
+            font-size: 0.55rem;
+        }
+        .metar-badge-side {
+            font-size: 0.82rem;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+        .metar-badge-side .metar-gust {
+            display: block;
+            font-size: 0.68rem;
+            font-weight: 400;
+            opacity: 0.75;
+        }
+
+        /* ── Section titles ── */
+        .metar-section-title {
+            font-family: 'Barlow Condensed', sans-serif;
+            font-size: 0.78rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--ops-muted);
+            margin: 1.2rem 0 0.5rem;
+        }
+
+        /* ── Runway crosswind table ── */
+        .metar-compass-wrap {
+            max-width: 720px;
+            margin: 0 auto;
+        }
+
+        .metar-compass-titles {
+            position: relative;
+            height: 1.4rem;
+        }
+
+        .metar-compass-titles .metar-section-title {
+            position: absolute;
+            top: 0;
+            margin: 0;
+            white-space: nowrap;
+        }
+
+        .metar-compass-title-left {
+            left: 26.8%;
+            transform: translateX(-50%);
+        }
+
+        .metar-compass-title-right {
+            left: 75%;
+            transform: translateX(-50%);
+        }
+
+        .metar-wind-compass {
+            display: block;
+            width: 100%;
+            height: auto;
+            margin: 0 0 0.75rem;
+        }
+
+        .metar-runway-note {
+            font-size: 0.68rem;
+            color: var(--ops-muted);
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+        }
+        .metar-runway-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .metar-runway-table th {
+            text-align: left;
+            font-size: 0.65rem;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--ops-muted);
+            padding: 0.3rem 0.5rem;
+            border-bottom: 1px solid var(--ops-border);
+        }
+        .metar-runway-table td {
+            padding: 0.4rem 0.5rem;
+            border-bottom: 1px solid rgba(29,95,67,0.35);
+            font-weight: 600;
+        }
+        .metar-runway-table tr:last-child td { border-bottom: none; }
+
+        /* ── Daylight bar ── */
+        .metar-daylight-bar {
+            position: relative;
+            height: 8px;
+            border-radius: 4px;
+            background: rgba(255,255,255,0.08);
+            margin-bottom: 0.5rem;
+        }
+        .metar-daylight-fill {
+            position: absolute;
+            top: 0; left: 0; height: 100%;
+            border-radius: 4px;
+            opacity: 0.4;
+        }
+        .metar-daylight-marker {
+            position: absolute;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.95rem;
+        }
+        .metar-daylight-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.72rem;
+            color: var(--ops-muted);
+        }
+        .metar-daylight-next {
+            font-size: 0.72rem;
+            color: var(--ops-muted);
+            margin-top: 0.3rem;
+        }
+
+        /* ── Trend sparklines ── */
+        .metar-trend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+        .metar-spark {
+            width: 100%;
+            height: 46px;
+            display: block;
+            margin: 0.3rem 0;
+        }
+        .metar-trend-range {
+            font-size: 0.7rem;
+            color: var(--ops-muted);
+        }
+        .metar-trend-empty {
+            font-size: 0.78rem;
+            color: var(--ops-muted);
+            font-style: italic;
+        }
+    </style>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/header.css') }}">
+    <style>.metars-layout { height:auto; min-height:70vh; overflow:visible; margin:1rem; } .metar-safety { padding:1rem; text-align:center; font-size:.8rem; }</style>
+</head>
+<body>
+{% if not embed %}{% include "header.html" %}{% endif %}
+<div class="metars-layout">
+
+    <!-- ── Sidebar ── -->
+    {% if not embed %}
+    <aside class="metar-sidebar">
+        <div class="metar-sidebar-header">
+            Stations
+            {% if stations %}
+                <span class="metar-sidebar-count">{{ stations|length }}</span>
+            {% endif %}
+        </div>
+
+        <p style="padding:0 1rem;font-size:.8rem;">Stations come from your existing Logbook weather settings.</p>
+        {% if stations %}
+            <ul class="metar-sidebar-list" id="metarStationList">
+                {% for icao in stations %}
+                    <li>
+                        <a href="{{ url_for('metars.metars', icao=icao) }}"
+                           class="{{ 'active' if selected == icao else '' }}">
+                            {{ icao }}
+                        </a>
+
+                    </li>
+                {% endfor %}
+            </ul>
+        {% else %}
+            <div class="sidebar-empty" id="metarSidebarEmpty">
+                No METAR stations configured. Choose stations under "Global METAR Stations" in Logbook settings.
+            </div>
+        {% endif %}
+    </aside>
+    {% endif %}
+
+    <!-- ── Main pane ── -->
+    <div class="metar-main">
+        {% if not selected %}
+            <div class="metar-main-empty">
+                <div class="icon">&#9992;</div>
+                <p>Select a station from the sidebar to view its METAR.</p>
+            </div>
+        {% else %}
+            <div class="metar-heading">{{ selected }}</div>
+            {% if metar and metar.freshness_warning %}<div role="alert" style="border:2px solid #ffb454;padding:1rem;color:#ffcf80;background:#3a2510;margin:1rem 0;">{{ metar.freshness_warning }} Observation age: {{ metar.age_display }}. Reports older than {{ max_age_hours }} hours are flagged.</div>{% endif %}
+            <div class="metar-meta">
+                {% if metar %}
+                    {{ metar.name }}
+                    {% if metar.obs_time %} &middot; observed {{ metar.obs_time }} &middot; {{ metar.age_display }}{% endif %}
+                    &middot; source: {{ {'BOM': 'Bureau of Meteorology', 'TEXT': 'NOAA METAR feed'}.get(metar.source, 'aviationweather.gov') }}
+                {% else %}
+                    Live weather via <a href="https://aviationweather.gov/" target="_blank" rel="noopener">aviationweather.gov</a>
+                {% endif %}
+            </div>
+
+            {% if metar %}
+                {% if not embed %}
+                <div class="metar-color-bar">
+                    Background:
+                    <input type="color" id="metarBgColor" value="#014c28">
+                </div>
+                {% endif %}
+
+                <div class="metar-card{% if embed %} metar-card-flat{% endif %}" id="metarCard">
+                    <div class="metar-card-top">
+                        <span class="metar-station-name">{{ selected }} — {{ metar.airport_name or metar.name }}</span>
+                        {% if metar.flight_cat %}
+                            <span class="metar-flight-cat" style="background:{{ metar.flight_cat_color }}" title="{{ metar.fc_meaning }}">{{ metar.flight_cat }}</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="metar-columns">
+                    <div class="metar-col-left">
+                    {% if metar.summary %}
+                        <div class="metar-summary">{{ metar.summary }}</div>
+                    {% endif %}
+
+                    <div class="metar-badges">
+                        {% if metar.flight_cat %}
+                        <div class="metar-badge" style="background:{{ metar.flight_cat_color }}; color:#06120c;">
+                            <div class="metar-badge-label">Category <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.flight_cat }}">?</span></div>
+                            <div class="metar-badge-value">{{ metar.flight_cat }}</div>
+                        </div>
+                        {% endif %}
+                        <div class="metar-badge">
+                            <div class="metar-badge-label">Temp <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.temp }}">?</span></div>
+                            <div class="metar-badge-value">{{ metar.temp_c if metar.temp_c is not none else '—' }}&deg;C</div>
+                        </div>
+                        <div class="metar-badge">
+                            <div class="metar-badge-label">Wind <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.wind }}">?</span></div>
+                            <div class="metar-badge-value with-gauge">
+                                <div class="metar-gauge" style="--pct: {{ metar.wind_gauge_pct }}; --gauge-color: {{ metar.flight_cat_color or 'var(--ops-bright)' }};">
+                                    <div class="metar-gauge-value">{{ metar.wind_kmh|round(0)|int if metar.wind_kmh else 0 }}<small>km/h</small></div>
+                                </div>
+                                <div class="metar-badge-side">
+                                    {% if metar.wind_dir_deg is not none %}
+                                        <span class="metar-compass" style="--wind-rot: {{ metar.wind_dir_deg }}deg;"><span class="metar-compass-arrow"></span></span>
+                                    {% endif %}
+                                    {% if metar.wind_kmh %}{{ metar.wind_dir_compass }}{% else %}Calm{% endif %}
+                                    {% if metar.gust_kmh %}<span class="metar-gust">gust {{ metar.gust_kmh }} km/h <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.gust }}">?</span></span>{% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metar-badge">
+                            <div class="metar-badge-label">Visibility <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.visibility }}">?</span></div>
+                            <div class="metar-badge-value with-gauge">
+                                {% if metar.visib_gauge_pct is not none %}
+                                <div class="metar-gauge" style="--pct: {{ metar.visib_gauge_pct }}; --gauge-color: {{ metar.flight_cat_color or 'var(--ops-bright)' }};">
+                                    <div class="metar-gauge-value">{{ metar.visib_km|round(1) if metar.visib_km is not none else '—' }}<small>km</small></div>
+                                </div>
+                                {% endif %}
+                                <div class="metar-badge-side">{{ metar.visib_metric }}</div>
+                            </div>
+                        </div>
+                        <div class="metar-badge"{% if metar.flight_cat %} style="background:{{ metar.flight_cat_color }}; color:#06120c;"{% endif %}>
+                            <div class="metar-badge-label">Ceiling <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.ceiling }}">?</span></div>
+                            <div class="metar-badge-value">{{ metar.ceiling_display }}</div>
+                        </div>
+                        <div class="metar-badge">
+                            <div class="metar-badge-label">QNH <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.qnh }}">?</span></div>
+                            <div class="metar-badge-value">{{ metar.altim_hpa if metar.altim_hpa is not none else '—' }} hPa</div>
+                        </div>
+                    </div>
+
+                    <div class="metar-grid">
+                        <div>
+                            <div class="metar-stat-label">Dewpoint <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.dewpoint }}">?</span></div>
+                            <div class="metar-stat-value">{{ metar.dewpoint_c if metar.dewpoint_c is not none else '—' }}&deg;C</div>
+                        </div>
+                        {% if metar.gust_kmh %}
+                        <div>
+                            <div class="metar-stat-label">Gust</div>
+                            <div class="metar-stat-value">{{ metar.gust_kmh }} km/h</div>
+                        </div>
+                        {% endif %}
+                        {% if metar.clouds %}
+                        <div style="grid-column: 1 / -1;">
+                            <div class="metar-stat-label">Cloud <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.cloud }}">?</span></div>
+                            <div class="metar-stat-value">{{ metar.clouds }}</div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    {% if metar.runways %}
+                    <div class="metar-section-title">Runway Winds <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.crosswind }}">?</span></div>
+                    <div class="metar-runway-note">Indicative only — runway headings are approximated from the runway number, not surveyed. Not for flight planning.</div>
+                    <table class="metar-runway-table">
+                        <thead>
+                            <tr><th>Runway</th><th>Into-wind end</th><th>Headwind</th><th>Crosswind</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for rw in metar.runways %}
+                            <tr>
+                                <td>{{ rw.runway }}</td>
+                                <td>{{ rw.active_end }}</td>
+                                <td>{{ rw.headwind_kmh }} km/h</td>
+                                <td style="color: {{ rw.color }};">{{ rw.crosswind_kmh }} km/h ({{ rw.crosswind_side }})</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% endif %}
+
+                    {% if metar.daylight %}
+                    <div class="metar-section-title">Daylight <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.daylight }}">?</span></div>
+                    <div class="metar-daylight-bar">
+                        <div class="metar-daylight-fill" style="width: {{ metar.daylight.pct }}%; background: {{ '#ffd65f' if metar.daylight.is_day else '#7fb7ff' }};"></div>
+                        <div class="metar-daylight-marker" style="left: {{ metar.daylight.pct }}%;">{{ '☀' if metar.daylight.is_day else '☾' }}</div>
+                    </div>
+                    <div class="metar-daylight-labels">
+                        <span>☀ Sunrise {{ metar.daylight.sunrise }}</span>
+                        <span>☾ Sunset {{ metar.daylight.sunset }}</span>
+                    </div>
+                    <div class="metar-daylight-next">
+                        {{ 'Currently daytime' if metar.daylight.is_day else 'Currently nighttime' }} &middot;
+                        next {{ metar.daylight.next_event }} at {{ metar.daylight.next_event_time }}
+                    </div>
+                    {% endif %}
+
+                    </div><!-- /metar-col-left -->
+
+                    <div class="metar-col-right">
+                    {% if metar.wx_string %}
+                    <div class="metar-stat-label">Weather <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.weather }}">?</span></div>
+                    <div class="metar-stat-value" style="margin-bottom: 1.1rem;">{{ metar.wx_string }}</div>
+                    {% endif %}
+
+                    {% if metar.wind_compass_svg %}
+                    <div class="metar-compass-wrap">
+                        <div class="metar-compass-titles">
+                            <span class="metar-section-title metar-compass-title-left">Wind Compass <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.wind }}">?</span></span>
+                            <span class="metar-section-title metar-compass-title-right">Wind Speed <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.wind }}">?</span></span>
+                        </div>
+                        {{ metar.wind_compass_svg | safe }}
+                        {% if not metar.runway_layout_known %}<p>Runway diagram unavailable — showing wind direction and speed only.</p>{% endif %}
+                    </div>
+                    {% else %}
+                    <p>Runway diagram unavailable — no runway layout is configured for this station.</p>
+                    {% endif %}
+
+                    {% if metar.trend %}
+                    <div class="metar-section-title">Trend <span class="info-dot" tabindex="0" data-tip="{{ metar.glossary.trend }}">?</span></div>
+                    {% if metar.trend.available %}
+                    <div class="metar-trend-grid">
+                        <div>
+                            <div class="metar-stat-label">Temperature (last {{ metar.trend.span_hours }}h)</div>
+                            {{ metar.trend.temp_svg | safe }}
+                            <div class="metar-trend-range">{{ metar.trend.temp_min }}&deg;C – {{ metar.trend.temp_max }}&deg;C</div>
+                        </div>
+                        <div>
+                            <div class="metar-stat-label">Wind speed (last {{ metar.trend.span_hours }}h)</div>
+                            {{ metar.trend.wind_svg | safe }}
+                            <div class="metar-trend-range">up to {{ metar.trend.wind_max }} km/h</div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="metar-trend-empty">No recent history is available for this station yet.</div>
+                    {% endif %}
+                    {% endif %}
+
+                    {% if metar.raw %}
+                        <div class="metar-section-title">Raw METAR</div>
+                        <div class="metar-raw">{{ metar.raw }}</div>
+                    {% endif %}
+                    </div><!-- /metar-col-right -->
+                    </div><!-- /metar-columns -->
+                </div>
+
+                {% if not embed %}
+                <script>
+                    (function () {
+                        const card = document.getElementById('metarCard');
+                        const picker = document.getElementById('metarBgColor');
+                        const saved = localStorage.getItem('metarBgColor') || '#014c28';
+                        picker.value = saved;
+                        card.style.setProperty('--metar-card-bg', saved);
+                        picker.addEventListener('input', function () {
+                            card.style.setProperty('--metar-card-bg', picker.value);
+                            localStorage.setItem('metarBgColor', picker.value);
+                        });
+                    })();
+                </script>
+                {% endif %}
+            {% else %}
+                <div class="metar-no-data">
+                    <p>
+                        No live weather for <strong>{{ selected }}</strong> right now.
+                        This usually means the station isn't on the global METAR
+                        exchange and has no BOM fallback configured, or the feed
+                        is briefly unavailable.
+                    </p>
+                    <p>
+                        You can check it directly on
+                        <a href="https://aviationweather.gov/data/metar/?ids={{ selected }}" target="_blank" rel="noopener">aviationweather.gov</a>.
+                    </p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div><!-- /metar-main -->
+</div>
+<p class="metar-safety">Weather awareness only — not for flight planning or operational decisions. Consult official aviation weather sources.</p>
+</body>
+</html>

@@ -259,6 +259,7 @@
         <button type="button" class="tab-btn" data-tab="timezone">Timezone</button>
         <button type="button" class="tab-btn" data-tab="theme">Theme</button>
         <button type="button" class="tab-btn" data-tab="images">Images</button>
+        <button type="button" class="tab-btn" data-tab="weather">Weather</button>
       </div>
 
       <div class="settings-body">
@@ -288,6 +289,12 @@
           <label class="form-label">Theme</label>
           <div id="theme-grid" class="theme-grid"></div>
           <small class="help">Click a card to preview. Saves when you press <b>Save</b>.</small>
+        </div>
+
+        <div class="settings-pane" data-pane="weather">
+          <label class="form-label" for="set-metar-stations">METAR weather stations</label>
+          <input type="text" class="form-control" id="set-metar-stations" value="{{ settings.get('metar_stations', '') if settings else '' }}" placeholder="e.g. YSSY, YSBK, YSWS">
+          <small class="help">Comma-separated four-letter ICAO codes. These stations appear on your METARs page. Leave blank to clear the list.</small>
         </div>
 
         <div class="settings-pane" data-pane="images">
@@ -604,7 +611,8 @@
           {
             timezone,
             theme,
-            aircraft_image_import_folder: imageImportFolder
+            aircraft_image_import_folder: imageImportFolder,
+            metar_stations: document.getElementById('set-metar-stations').value.trim()
           }
         );
         if (!r2 || !r2.success) throw new Error((r2 && r2.error) || 'update_app_settings failed');

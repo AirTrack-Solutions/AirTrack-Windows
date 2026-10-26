@@ -409,6 +409,17 @@ def update_app_settings():
             or '/app/static/uploads/aircraft_imports'
         ).strip()
 
+        metar_stations = None
+        if "metar_stations" in data:
+            raw = data["metar_stations"]
+            if not isinstance(raw, str):
+                return jsonify({"success": False, "error": "Weather stations must be comma-separated ICAO codes"}), 400
+            import re
+            codes = [code.strip().upper() for code in raw.split(",") if code.strip()]
+            if len(codes) > 50 or any(not re.fullmatch(r"[A-Z]{4}", code) for code in codes):
+                return jsonify({"success": False, "error": "Use up to 50 four-letter ICAO weather station codes"}), 400
+            metar_stations = ",".join(dict.fromkeys(codes))
+
         with db.engine.begin() as conn:
             for k, v in (
                 ('timezone', timezone),
@@ -427,6 +438,9 @@ def update_app_settings():
                     ),
                     {'k': k, 'v': v},
                 )
+
+            if metar_stations is not None:
+                conn.execute(text("INSERT INTO app_settings (SettingKey, SettingValue) VALUES ('metar_stations', :value) ON DUPLICATE KEY UPDATE SettingValue=VALUES(SettingValue)"), {"value": metar_stations})
 
         return jsonify({"success": True})
 
