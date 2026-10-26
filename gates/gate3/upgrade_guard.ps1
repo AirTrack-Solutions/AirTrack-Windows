@@ -5,6 +5,7 @@ param(
  [Parameter(Mandatory=$true)][string]$InstallDir,
  [ValidatePattern('^[A-Za-z][A-Za-z0-9_-]{1,63}$')][string]$ServiceName='AirTrackClient',
  [string]$ExpectedVersion='1.0.1',
+ [switch]$DeferRollback,
  [Parameter(Mandatory=$true)][string]$StateFile
 )
 $ErrorActionPreference='Stop'
@@ -152,6 +153,13 @@ if($Mode -eq 'Prepare'){
   Remove-Item -LiteralPath $state.flag -ErrorAction Stop
   $state.phase='completed';SaveState $state
  }catch{
-  $failure=$_;RestoreState $state;throw ('Update failed and was restored: '+$failure.Exception.Message)
+  $failure=$_
+  if($DeferRollback){
+   # Inno must finish its own file cleanup before restoring the snapshot.
+   # Keep the application stopped/gated until DeinitializeSetup runs Rollback.
+   StopApp
+   throw ('Update failed; installer cleanup must finish before recovery: '+$failure.Exception.Message)
+  }
+  RestoreState $state;throw ('Update failed and was restored: '+$failure.Exception.Message)
  }
 }

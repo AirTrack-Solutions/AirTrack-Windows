@@ -102,6 +102,7 @@ function RunGuard(Mode: String): Boolean;
 var Code: Integer; Params: String;
 begin
   Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.1 -StateFile "' + TransactionFile + '"';
+  if Mode = 'Finish' then Params := Params + ' -DeferRollback';
   Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
 end;
 
