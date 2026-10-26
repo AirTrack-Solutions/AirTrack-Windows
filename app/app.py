@@ -119,6 +119,15 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URI') or \
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 
+# During an installer transaction, only the version/database health check is
+# served. This prevents writes before success or a database rollback.
+@app.before_request
+def _application_upgrade_gate():
+    flag = Path(os.environ.get("AIRTRACK_HOME", "")) / "update-in-progress.json"
+    if flag.is_file() and request.endpoint != "updates.running_version":
+        return {"error": "Application update in progress. Please try again shortly."}, 503
+
+
 # ---------------------------------------------------------------------------
 # 🔥 Initialise DB before importing models
 # ---------------------------------------------------------------------------
@@ -1229,6 +1238,7 @@ from routes.manual_entry_routes import manual_entry_bp
 from routes.registry_routes import registry_bp
 from routes.notam_routes import notam_bp
 from routes.metar_routes import metars_bp
+from routes.update_routes import updates_bp
 _ARIA_ENABLED = os.getenv("ARIA_ENABLED", "0").lower() in ("1", "true", "yes")
 if _ARIA_ENABLED:
     from routes.aria_routes import aria_bp
@@ -1259,6 +1269,7 @@ app.register_blueprint(manual_entry_bp)
 app.register_blueprint(registry_bp)
 app.register_blueprint(notam_bp)
 app.register_blueprint(metars_bp)
+app.register_blueprint(updates_bp)
 if _ARIA_ENABLED:
     app.register_blueprint(aria_bp)
     csrf.exempt(aria_bp)
@@ -1317,6 +1328,8 @@ try:
         from apscheduler.triggers.interval import IntervalTrigger
 
         def _run_mangy_marmot():
+            if (Path(_os.environ.get("AIRTRACK_HOME", "")) / "update-in-progress.json").is_file():
+                return
             try:
                 from woodland.mangy_marmot import main
                 main()

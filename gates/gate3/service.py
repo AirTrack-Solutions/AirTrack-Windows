@@ -81,6 +81,11 @@ def _load_config():
     os.environ.setdefault('NOTAM_PRIMARY_AIRPORTS', ','.join(codes))
     os.environ.setdefault('NOTAM_HOME_ICAOS', ','.join(codes))
 
+    port = int(cfg.get('app', 'port', fallback='5000'))
+    if not 1 <= port <= 65535:
+        raise ValueError('Invalid application port')
+    os.environ.setdefault('AIRTRACK_PORT', str(port))
+
     # Log dir alongside the executable so it survives reinstalls
     log_dir = exe_dir / 'logs'
     log_dir.mkdir(exist_ok=True)
@@ -122,7 +127,7 @@ _bootstrap_core()
 # ---------------------------------------------------------------------------
 
 class AirTrackService(win32serviceutil.ServiceFramework):
-    _svc_name_        = 'AirTrackClient'
+    _svc_name_        = os.environ.get('AIRTRACK_SERVICE_NAME', 'AirTrackClient')
     _svc_display_name_ = 'AirTrack Client'
     _svc_description_ = 'AirTrack Client — planespotting logbook'
 
@@ -168,7 +173,7 @@ class AirTrackService(win32serviceutil.ServiceFramework):
 
         t = threading.Thread(
             target=serve,
-            kwargs={'app': flask_app, 'host': '127.0.0.1', 'port': 5000},
+            kwargs={'app': flask_app, 'host': '127.0.0.1', 'port': int(os.environ.get('AIRTRACK_PORT', '5000'))},
             daemon=True,
         )
         t.start()

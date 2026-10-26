@@ -6,8 +6,8 @@
 
 # Auto-generated AirTrack version module
 
-AIRTRACK_VERSION = '1.0.0'
-AIRTRACK_RELEASE = 300
+AIRTRACK_VERSION = '1.0.1'
+AIRTRACK_RELEASE = 301
 AIRTRACK_NAME = 'Wilbur'
 
 # Versions used by Flask app

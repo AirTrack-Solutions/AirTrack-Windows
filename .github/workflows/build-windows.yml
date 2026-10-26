@@ -42,6 +42,7 @@ jobs:
             --add-data "../../app/db;app/db" `
             --add-data "../../app/scripts/airports.csv;app/scripts" `
             --add-data "../../app/core;app/core" `
+            --add-data "../../app/windows_release.json;app" `
             --hidden-import win32timezone `
             --hidden-import win32service `
             --hidden-import win32serviceutil `

@@ -22,6 +22,7 @@
 
         <!-- Right: Cockpit -->
         <div class="header-right">
+            {% if endpoint_exists('updates.updates_page') %}<a href="{{ url_for('updates.updates_page') }}" class="admin-link">Check for updates</a>{% endif %}
             <a href="{{ url_for('admin.admin_dashboard') }}" class="admin-link" id="cockpit-nav-link">🛠 Cockpit</a>
         </div>
 
