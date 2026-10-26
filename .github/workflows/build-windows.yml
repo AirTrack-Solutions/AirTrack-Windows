@@ -93,9 +93,16 @@ jobs:
         if: steps.cache-mariadb.outputs.cache-hit != 'true'
         run: |
           Invoke-WebRequest `
-            -Uri "https://downloads.mariadb.com/MariaDB/mariadb-11.4.12/winx64-packages/mariadb-11.4.12-winx64.msi" `
+            -Uri "https://archive.mariadb.org/mariadb-11.4.12/winx64-packages/mariadb-11.4.12-winx64.msi" `
             -OutFile "gates\gate3\mariadb-11.4.12-winx64.msi" `
             -UseBasicParsing
+
+      - name: Verify MariaDB MSI
+        run: |
+          $actual = (Get-FileHash "gates/gate3/mariadb-11.4.12-winx64.msi" -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($actual -ne "4d92fb5f16c0ec8d5a9fc1efdb33a377eaa712d6bce97451e151465c3041ccac") {
+            throw "MariaDB MSI checksum mismatch"
+          }
 
       - name: Install Inno Setup
         run: |
