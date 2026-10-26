@@ -66,6 +66,7 @@ jobs:
             --hidden-import extensions `
             --hidden-import routes `
             --collect-all mariadb `
+            --collect-all tzdata `
             --collect-data jaraco `
             --distpath dist `
             --workpath build `
