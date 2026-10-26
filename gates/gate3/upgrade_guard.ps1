@@ -16,7 +16,7 @@ function Ini([string]$File){
  foreach($line in [IO.File]::ReadAllLines($File)){
   $s=$line.Trim();if(-not $s -or $s.StartsWith('#') -or $s.StartsWith(';')){continue}
   if($s -match '^\[([^\]]+)\]$'){$section=$matches[1];$result[$section]=@{};continue}
-  if($s.Contains('=') -and $section){$parts=$s.Split(@('='),2);$result[$section][$parts[0].Trim()]=$parts[1].Trim()}
+  if($s.Contains('=') -and $section){$parts=($s -split '=',2);$result[$section][$parts[0].Trim()]=$parts[1].Trim()}
  };return $result
 }
 function NoLinks([string]$Path){
@@ -59,9 +59,10 @@ function Native([string]$File,[string[]]$Arguments,[string]$ErrorLog,[string]$In
  $params=@{FilePath=$File;ArgumentList=$Arguments;PassThru=$true;NoNewWindow=$true;RedirectStandardError=$ErrorLog;RedirectStandardOutput=($ErrorLog+'.out')}
  if($InputFile){$params.RedirectStandardInput=$InputFile}
  $p=Start-Process @params
+ # Keep the process handle before it exits; PowerShell 5.1 otherwise loses ExitCode.
+ $processHandle=$p.Handle
  if(-not $p.WaitForExit(120000)){ $p.Kill();$p.WaitForExit();throw 'Database operation timed out'}
- # Refresh is needed for reliable ExitCode after redirected Start-Process.
- $p.Refresh();if($p.ExitCode -ne 0){throw 'Database backup/restore failed; see protected recovery log'}
+ if($null -eq $p.ExitCode -or $p.ExitCode -ne 0){throw 'Database backup/restore failed; see protected recovery log'}
 }
 function RestoreState($State){
  StopApp
@@ -92,14 +93,14 @@ if($Mode -eq 'Prepare'){
  $environment=(Get-ItemProperty ('HKLM:\SYSTEM\CurrentControlSet\Services\'+$ServiceName) -Name Environment -ErrorAction SilentlyContinue).Environment
  if(@($environment | Where-Object {$_ -match '^(DATABASE_URI|DB_HOST|DB_PORT|DB_NAME|DB_USER|DB_PASSWORD|AIRTRACK_HOME|AIRTRACK_PORT)='}).Count){throw 'Service environment overrides require manual review before updating'}
  if($config.database.uri){
-  $uri=[uri]$config.database.uri;$credentials=$uri.UserInfo.Split(@(':'),2)
+  $uri=[uri]$config.database.uri;$credentials=($uri.UserInfo -split ':',2)
   if($uri.Host -ine $config.database.host -or $uri.Port -ne [int]$config.database.port -or [uri]::UnescapeDataString($uri.AbsolutePath.Trim('/')) -ne $config.database.name -or [uri]::UnescapeDataString($credentials[0]) -ne $config.database.user -or $credentials.Count -ne 2 -or [uri]::UnescapeDataString($credentials[1]) -cne $config.database.password){throw 'Database URI differs from backup connection fields; refusing an unsafe backup'}
  }
- $home=$config.app.data_dir;if(-not $home){$home=Join-Path $env:ProgramData 'AirTrack'}
- $home=[IO.Path]::GetFullPath($home).TrimEnd('\')
- if($home.StartsWith($InstallDir+'\',[StringComparison]::OrdinalIgnoreCase) -or $home -ieq $InstallDir){throw 'Move application data outside the program folder before using this upgrade flow'}
+ $appDataRoot=$config.app.data_dir;if(-not $appDataRoot){$appDataRoot=Join-Path $env:ProgramData 'AirTrack'}
+ $appDataRoot=[IO.Path]::GetFullPath($appDataRoot).TrimEnd('\')
+ if($appDataRoot.StartsWith($InstallDir+'\',[StringComparison]::OrdinalIgnoreCase) -or $appDataRoot -ieq $InstallDir){throw 'Move application data outside the program folder before using this upgrade flow'}
  if($config.database.name -notmatch '^[A-Za-z0-9_]+$'){throw 'Unsupported database name'}
- $updates=Join-Path $home 'updates';New-Item -ItemType Directory -Path $updates -Force|Out-Null
+ $updates=Join-Path $appDataRoot 'updates';New-Item -ItemType Directory -Path $updates -Force|Out-Null
  & icacls.exe $updates /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F' | Out-Null
  if($LASTEXITCODE -ne 0){throw 'Cannot secure update backups'}
  if([IO.Path]::GetDirectoryName([IO.Path]::GetFullPath($StateFile)) -ine $updates){throw 'Unexpected transaction state directory'}
@@ -107,7 +108,7 @@ if($Mode -eq 'Prepare'){
  $db=Get-CimInstance Win32_Service -Filter "Name='AirTrackDB'";if(-not $db -or $db.PathName -notmatch '^\s*"([^"]+)"'){throw 'Cannot locate the installed database tools'}
  $dbBin=Split-Path $matches[1];if(-not(Test-Path (Join-Path $dbBin 'mariadb-dump.exe'))){throw 'Database backup tool unavailable'}
  $port=$config.app.port;if(-not $port){$port=5000};if([int]$port -lt 1 -or [int]$port -gt 65535){throw 'Invalid application port'}
- $state=[ordered]@{phase='preparing';install_dir=$InstallDir;service=$ServiceName;backup=$backup;flag=(Join-Path $home 'update-in-progress.json');db_bin=$dbBin;db_name=$config.database.name;port=[int]$port;version=$ExpectedVersion}
+ $state=[ordered]@{phase='preparing';install_dir=$InstallDir;service=$ServiceName;backup=$backup;flag=(Join-Path $appDataRoot 'update-in-progress.json');db_bin=$dbBin;db_name=$config.database.name;port=[int]$port;version=$ExpectedVersion}
  Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $backup 'recover.ps1');SaveState $state
  try{
   StopApp
