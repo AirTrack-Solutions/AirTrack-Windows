@@ -9,7 +9,7 @@ from pathlib import Path
 from flask import Blueprint, abort, jsonify, render_template, request, send_file
 from extensions import db
 from sqlalchemy import text
-from core.windows_updates import DEFAULT_FEED, UpdateError, check_release, download_installer, verify_manifest, version_tuple
+from core.windows_updates import DEFAULT_FEED, UpdateError, check_release, download_installer, version_tuple
 from utils.settings_utils import get_current_theme
 
 updates_bp = Blueprint('updates', __name__, url_prefix='/updates')
@@ -37,7 +37,12 @@ def _directory():
 @updates_bp.get('/api/version')
 def running_version():
     try:
-        db.session.execute(text('SELECT 1'))
+        db.session.execute(text('SELECT 1 FROM aircraft LIMIT 1'))
+        db.session.execute(text('SELECT 1 FROM app_settings LIMIT 1'))
+        applied = {row[0] for row in db.session.execute(text('SELECT migration FROM migrations')).fetchall()}
+        migrations = ASSETS / 'migrations'
+        if not migrations.is_dir() or any(path.name not in applied for path in migrations.glob('*.sql')):
+            raise UpdateError('Database migrations are incomplete')
         return jsonify(product='AirTrack-Windows', version=installed_version(), database_ready=True)
     except Exception:
         return jsonify(product='AirTrack-Windows', version=installed_version(), database_ready=False), 503
