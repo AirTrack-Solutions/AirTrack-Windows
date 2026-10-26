@@ -69,7 +69,7 @@ function RestoreState($State){
  $option=Join-Path $State.backup 'recovery-client.ini'
  try{
   Options $config $option
-  Native (Join-Path $State.db_bin 'mariadb.exe') @("--defaults-extra-file=`"$option`"","--database=$($State.db_name)") (Join-Path $State.backup 'restore-error.log') (Join-Path $State.backup 'database.sql')
+  Native (Join-Path $State.db_bin 'mariadb.exe') @("--defaults-extra-file=`"$option`"") (Join-Path $State.backup 'restore-error.log') (Join-Path $State.backup 'database.sql')
  }finally{Remove-Item -LiteralPath $option -ErrorAction SilentlyContinue}
  # Target was verified as the service's application directory. Restore the
  # entire snapshot, rather than overlaying new/obsolete code together.
@@ -87,6 +87,14 @@ NoLinks $InstallDir
 if($Mode -eq 'Prepare'){
  if(Test-Path -LiteralPath $StateFile){$old=Get-Content -LiteralPath $StateFile -Raw|ConvertFrom-Json;if($old.phase -notin @('completed','rolled_back')){throw 'An earlier update requires recovery before another update'}}
  $config=Ini (Join-Path $InstallDir 'airtrack.cfg')
+ $installedMeta=Join-Path $InstallDir '_internal\app\windows_release.json'
+ if(Test-Path $installedMeta){$installed=Get-Content $installedMeta -Raw|ConvertFrom-Json;if([version]$installed.version -gt [version]$ExpectedVersion){throw 'Refusing to replace a newer application version'}}
+ $environment=(Get-ItemProperty ('HKLM:\SYSTEM\CurrentControlSet\Services\'+$ServiceName) -Name Environment -ErrorAction SilentlyContinue).Environment
+ if(@($environment | Where-Object {$_ -match '^(DATABASE_URI|DB_HOST|DB_PORT|DB_NAME|DB_USER|DB_PASSWORD|AIRTRACK_HOME|AIRTRACK_PORT)='}).Count){throw 'Service environment overrides require manual review before updating'}
+ if($config.database.uri){
+  $uri=[uri]$config.database.uri;$credentials=$uri.UserInfo.Split(@(':'),2)
+  if($uri.Host -ine $config.database.host -or $uri.Port -ne [int]$config.database.port -or [uri]::UnescapeDataString($uri.AbsolutePath.Trim('/')) -ne $config.database.name -or [uri]::UnescapeDataString($credentials[0]) -ne $config.database.user -or $credentials.Count -ne 2 -or [uri]::UnescapeDataString($credentials[1]) -cne $config.database.password){throw 'Database URI differs from backup connection fields; refusing an unsafe backup'}
+ }
  $home=$config.app.data_dir;if(-not $home){$home=Join-Path $env:ProgramData 'AirTrack'}
  $home=[IO.Path]::GetFullPath($home).TrimEnd('\')
  if($home.StartsWith($InstallDir+'\',[StringComparison]::OrdinalIgnoreCase) -or $home -ieq $InstallDir){throw 'Move application data outside the program folder before using this upgrade flow'}
@@ -108,7 +116,7 @@ if($Mode -eq 'Prepare'){
   $option=Join-Path $backup 'backup-client.ini'
   try{
    Options $config $option
-   Native (Join-Path $dbBin 'mariadb-dump.exe') @("--defaults-extra-file=`"$option`"",'--single-transaction','--skip-lock-tables','--no-tablespaces',"--result-file=`"$(Join-Path $backup 'database.sql')`"",$config.database.name) (Join-Path $backup 'backup-error.log')
+   Native (Join-Path $dbBin 'mariadb-dump.exe') @("--defaults-extra-file=`"$option`"",'--single-transaction','--skip-lock-tables','--no-tablespaces','--databases','--add-drop-database',"--result-file=`"$(Join-Path $backup 'database.sql')`"",$config.database.name) (Join-Path $backup 'backup-error.log')
    if((Get-Item (Join-Path $backup 'database.sql')).Length -lt 128){throw 'Database backup is incomplete'}
   }finally{Remove-Item -LiteralPath $option -ErrorAction SilentlyContinue}
   $state.phase='prepared';SaveState $state
@@ -118,6 +126,7 @@ if($Mode -eq 'Prepare'){
  }
 }elseif($Mode -in @('Finish','Rollback')){
  $state=Get-Content -LiteralPath $StateFile -Raw|ConvertFrom-Json
+ if($Mode -eq 'Rollback' -and $state.phase -eq 'rolled_back' -and $state.install_dir -ieq $InstallDir -and $state.service -eq $ServiceName){exit 0}
  if($Mode -eq 'Rollback' -and $state.phase -eq 'preparing' -and $state.install_dir -ieq $InstallDir -and $state.service -eq $ServiceName){
   Remove-Item -LiteralPath $state.flag -ErrorAction SilentlyContinue;StartApp;$state.phase='rolled_back';SaveState $state;exit 0
  }

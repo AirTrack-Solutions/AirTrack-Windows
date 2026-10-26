@@ -188,11 +188,7 @@ begin
     SaveStringToFile(BatchFile, BatchContent, False);
   end;
 
-  { ssPostInstall fires after files are copied and [InstallDelete]
-Type: filesandordirs; Name: "{app}\_internal"; Check: IsUpgrade
-Type: files; Name: "{app}\AirTrack.exe"; Check: IsUpgrade
-
-[Run] items complete }
+  { Configure copied files before post-install service actions. }
   if CurStep = ssPostInstall then
   begin
     if UpgradeInstall then

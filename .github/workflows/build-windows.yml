@@ -93,7 +93,10 @@ jobs:
             -UseBasicParsing
 
       - name: Install Inno Setup
-        run: choco install innosetup --yes --no-progress
+        run: |
+          if (-not (Test-Path "C:\Program Files (x86)\Inno Setup 6\ISCC.exe")) {
+            choco install innosetup --yes --no-progress
+          }
 
       - name: Compile installer
         working-directory: gates/gate3
