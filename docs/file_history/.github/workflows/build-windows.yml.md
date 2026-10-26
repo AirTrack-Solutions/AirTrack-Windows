@@ -35,3 +35,5 @@ Validate artifact and isolated Windows startup.
 - 2026-10-26: Use the runtime version in the visible header instead of hardcoded1.0.0, and run updater signature/route tests before compiling releases. Local suites pass (7 core and3 route tests). Final compiled artifact pending.
 
 - 2026-10-26: Original MariaDB download URL now redirects to a website rather than the MSI (confirmed during Hayley build). Changed cold-cache download to official archive.mariadb.org and verify both cached/downloaded MSI against its official sha256sums.txt value4d92fb5f16c0ec8d5a9fc1efdb33a377eaa712d6bce97451e151465c3041ccac. Current compiled Python artifact from build40312824955/source2a9f869 passes all10 updater contract tests. Final installer is being compiled natively on Hayley with source3d1eb2e guard cleanup correction.
+
+- 2026-10-26: Rotate the MariaDB cache key to include the verified digest prefix, avoiding reuse of unverified legacy cache content after the old download URL redirected to HTML. Hayley downloaded the official archive MSI and matched the full published SHA256 before native installer compilation.

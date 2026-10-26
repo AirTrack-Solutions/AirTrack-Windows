@@ -87,7 +87,7 @@ jobs:
         id: cache-mariadb
         with:
           path: gates/gate3/mariadb-11.4.12-winx64.msi
-          key: mariadb-11.4.12-winx64
+          key: mariadb-11.4.12-winx64-4d92fb5f16c0ec8d
 
       - name: Download MariaDB MSI
         if: steps.cache-mariadb.outputs.cache-hit != 'true'
