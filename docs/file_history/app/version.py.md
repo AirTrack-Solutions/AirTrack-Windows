@@ -3,14 +3,13 @@ Journal Revision: 1
 Last Updated: 2026-10-27
 
 ## Current State
-Version/display and Cockpit placement correction 1.0.4 prepared; native verification pending.
-Existing displayed application version; bump to1.0.1 for updater baseline.
+Released1.0.4: displayed version reads installed release metadata; update access is in Cockpit HUD and Settings, removed from main menu. Native test and main Hayley rendered pages/health/data preservation passed. Installer guard identity aligned; runner now requires completed transaction and exact healthy version before marking installed. Final installer SHA2568fc0e70739c5851501b6b1d7c1d180a452c8c7454c1f3a6d6e392fd6b00ffc28,171897009bytes. Python CI40451460598/source894878c; native correctionscf05983/3306653. Stable/candidate and Workshop use same artifact. Feed expiry2026-11-26T04:56:29.129008Z, ATC calendarID2 updated to15:56AEDT.
 
 ## Known Issues
-Baseline update build pending.
+None identified in the version/display correction; fresh-install acceptance remains separate.
 
 ## Future Work
-Verify compiled identity in Windows.
+Keep all future release identities aligned and verify rendered pages as well as health API.
 
 ## Entry Log
 - 2026-10-26: Created before V1 updater version changes; existing version module read. No past history inferred.
@@ -18,3 +17,5 @@ Verify compiled identity in Windows.
 - 2026-10-26: Implemented candidate user-approved Windows application update path: signed release verification/download, Logbook page, version health endpoint, service port support, upgrade transaction guard and installer wiring. Signature/download unit suite passed (7 tests including tampering, expiry, downgrade, truncation and cleanup). Python syntax passed. Windows compilation, service upgrade and failure recovery are pending; candidate is not a production release. Installer upgrade skips database bootstrap, targets the registered service directory, snapshots software/database, blocks requests during migration and checks version/database before clearing the gate. Recovery uses the saved guard/state; no unattended installation. Revert this candidate commit before deployment if validation fails.
 
 - 2026-10-27: Reproduced running service health1.0.3 while compiled version module still fixed1.0.1. Read release metadata for all displayed version values; remove header update link, add Cockpit HUD and Settings access. Bump installer/feed identity1.0.4. Verification pending; retain prior signed1.0.3 and protected snapshots for recovery.
+
+- 2026-10-27 final1.0.4 acceptance: Corrected the prior claim that version3 was fully visible: health reported3 but app/version.py still displayed1.0.1, header had update link. Source tests14 and CI passed. Initial native candidatec1750084 exposed remaining hardcoded3 guard values; isolated rollback restored healthy3 (Inno returned0, so strengthen runner completion/health verification). Corrected final native upgrade passed config/licence/uploads/weather/aircraft retention and actual rendered4 header, main-menu removal, HUD/Settings links. Main genuine signed SYSTEM3->4 passed rendered pages/database-ready4, original1aircraft digest,16settings and2files unchanged. No fresh wizard/power-cut acceptance claimed. Recovery: retain protected SQL/software transaction snapshots and prior3 Workshop .bak_pre_display_fix_1.0.4_20261027; restore/remove stable pointer to stop new delivery, never automatic downgrade. CalendarID2 expiry updated in place. Source commits894878c,cf05983,3306653; final journals follow.
