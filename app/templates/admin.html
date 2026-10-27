@@ -185,6 +185,9 @@
       Manual Aircraft Entry
     </button>
     <a href="http://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Launch Bug Tracker</button></a>
+    {% if endpoint_exists('updates.updates_page') %}
+    <a href="{{ url_for('updates.updates_page') }}"><button type="button" class="cockpit-hud-button">Application Updates</button></a>
+    {% endif %}
     <button class="cockpit-hud-button" onclick="openSettings()">Settings</button>
     <button class="cockpit-hud-button" onclick="openMunicipalityModal()" title="Set city name for an airport">Set Municipality</button>
 
@@ -318,6 +321,9 @@
         </div>
       </div>
 
+      {% if endpoint_exists('updates.updates_page') %}
+      <p><a href="{{ url_for('updates.updates_page') }}">Application updates and automatic update settings</a></p>
+      {% endif %}
       <div class="settings-footer">
         <div id="settingsStatus" class="status"></div>
         <div class="btn-row">
