@@ -16,14 +16,7 @@ _assets = Path(sys._MEIPASS) / 'app' if getattr(sys, 'frozen', False) else Path(
 AIRTRACK_VERSION = json.loads((_assets / 'windows_release.json').read_text(encoding='utf-8'))['version']
 if not isinstance(AIRTRACK_VERSION, str) or not re.fullmatch(r'\d+\.\d+\.\d+', AIRTRACK_VERSION):
     raise ValueError('Invalid installed Windows release version')
-AIRTRACK_RELEASE = 301
-AIRTRACK_NAME = 'Wilbur'
-
-# Versions used by Flask app
-FULL_VERSION = f"{AIRTRACK_VERSION}-{AIRTRACK_RELEASE}"
+# One semantic version identifies the application and its visible label.
+FULL_VERSION = AIRTRACK_VERSION
 SHORT_VERSION = AIRTRACK_VERSION
-DISPLAY_VERSION = (
-    f"AirTrack {AIRTRACK_VERSION} "
-    f"'{AIRTRACK_NAME}' — "
-    f"Release {AIRTRACK_RELEASE}"
-)
+DISPLAY_VERSION = f"AirTrack Logbook {AIRTRACK_VERSION}"
