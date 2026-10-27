@@ -66,7 +66,13 @@ $log=Join-Path $updates ('install-'+$result.version+'.log')
 $process=Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/SERVICENAME='+$ServiceName),('/RELEASEVERSION='+$result.version),('/LOG="'+$log+'"')) -PassThru
 $handle=$process.Handle
 if(-not $process.WaitForExit(3600000)){throw 'Installer is still running; inspect transaction state'}
-if($process.ExitCode -ne 0){
+$verifiedInstall=$false
+try{
+ $finished=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json
+ $health=Invoke-RestMethod ("http://127.0.0.1:"+$finished.port+'/updates/api/version') -TimeoutSec 10
+ $verifiedInstall=($finished.phase -eq 'completed' -and $finished.version -eq $result.version -and $finished.service -eq $ServiceName -and $finished.install_dir -ieq $InstallDir -and -not (Test-Path $finished.flag) -and $health.product -eq 'AirTrack-Windows' -and $health.version -eq $result.version -and $health.database_ready)
+}catch{}
+if($process.ExitCode -ne 0 -or -not $verifiedInstall){
  $result|ConvertTo-Json|Set-Content (Join-Path $updates 'failed-release.json') -Encoding UTF8
  @{status='error';error='Automatic installation failed. Inspect the recovery state before retrying.';checked_at=[DateTime]::UtcNow.ToString('o')}|ConvertTo-Json|Set-Content (Join-Path $updates 'automatic-status.json') -Encoding UTF8
  throw 'Automatic installation failed; inspect protected update logs'
