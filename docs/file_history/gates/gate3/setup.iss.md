@@ -1,8 +1,10 @@
 # File History: gates/gate3/setup.iss
 Journal Revision: 1
-Last Updated: 2026-10-26
+Last Updated: 2026-10-27
 
 ## Current State
+2026-10-27 candidate in progress: signed staging CLI plus independent SYSTEM daily/idle/on-AC task; seven-day postponement, pre-install hash recheck, existing transaction backups/rollback and interrupted-state recovery. Release identity1.0.2. Full Windows validation pending; no customer publication yet.
+
 2026-10-25 verified outcome: Actual clean compiled Windows application from build40190160286 (source1e76b9798314a6bb2ddb67a58ca29ebb981a4921) passed on Hayley via SSH in debug mode against a private cloned database on127.0.0.1:33317. /notams returned200 with all six configured cards; YSWS and YMML API endpoints returned200/count0 (no notices in copied DB). Actual binary accepted six codes and rejected seven/duplicates. No pip overlays in final bundle. Original AirTrackClient service path/config preserved, source config SHA unchanged, original service and both existing DB services running after test, temporary DB/app stopped and port33317 closed. This is a compiled-app smoke test, not a full Inno wizard/fresh-install/LocalSystem service test.
 
 Installer copies the customer license sidecar into _internal/config, creating that directory first, matching the actual frozen config.license runtime path.
@@ -25,3 +27,9 @@ Copy license into actual frozen config path and verify rebuilt artifact.
 - 2026-10-26: Candidate build40311359848 compiled Python successfully but Inno rejected a section marker accidentally inserted inside a code comment. Corrected that marker; reuse runner Inno installation when available. No candidate shipped. Route tests additionally passed CSRF rejection, database health, verified delivery and tamper refusal. Rebuild pending.
 
 - 2026-10-26: Deliberate standalone failed-health transaction passed on Hayley: database snapshot restored (including removal of a newly created table), software/config restored, repeated rollback succeeds. Added installer-only deferred rollback: keep service stopped/gated until Inno finishes its own failed-install cleanup, then restore in DeinitializeSetup. This avoids Inno deleting restored files after the guard returns. Full installer negative test pending.
+
+- 2026-10-26: Native full installer safely refused Prepare before replacement (exit7), although direct32-bit and64-bit guard transactions pass. Added protected temporary PowerShell transcript and installer guard exit/path diagnostics to identify this difference; ordinary installer failure/recovery acceptance remains pending. No Workshop/stable release changed.
+
+- 2026-10-27: Reproduced native installer refusal with diagnostics. Actual guard error is target/service mismatch, not dump failure: Inno selects original main app directory while /SERVICENAME=AirTrackUpdateTest resolves test service. Disable previous installation directory reuse so registry-derived DefaultDirName applies. Existing fail-closed guard preserved; verify full installer on isolated service before main upgrade.
+
+- 2026-10-27: Implemented automatic-update candidate at Trevor's explicit request. Frozen stage-update CLI exits before external task launches installer. SYSTEM task runs daily3am, catches up when idle10minutes/onAC/network available, never reboots; signed stable feed, seven-day postponement, failed-release hash quarantine. Existing data/backup gate preserved; Rollback can recover missing config after interrupted replacement. Existing installation location fix UsePreviousAppDir=no verified by successful isolated full installer1.0.1. Source tests before build: signature7, automatic policy4, routes3 passed in dependency environment. Pending full new-binary/native task validation and main170 rollout. Recovery disable task AirTrack-Update-<service>, use saved recover.ps1 and transaction state; never bypass gate.

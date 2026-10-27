@@ -1,8 +1,10 @@
 # File History: gates/gate3/upgrade_guard.ps1
 Journal Revision: 1
-Last Updated: 2026-10-26
+Last Updated: 2026-10-27
 
 ## Current State
+2026-10-27 candidate in progress: signed staging CLI plus independent SYSTEM daily/idle/on-AC task; seven-day postponement, pre-install hash recheck, existing transaction backups/rollback and interrupted-state recovery. Release identity1.0.2. Full Windows validation pending; no customer publication yet.
+
 New external installer guard planned: service stop, protected software/database backups, preservation, health check and recovery. See operations/windows_application_updates.md.
 
 ## Known Issues
@@ -23,3 +25,7 @@ Implement/verify normal upgrade, abort, failed health and manual crash recovery.
 - 2026-10-26 Windows runtime corrections: renamed the application-data variable to avoid PowerShell’s read-only HOME variable; capture the redirected native process handle before waiting so successful MariaDB dumps report a reliable ExitCode. A 20.9MB protected snapshot now completes successfully on Hayley. Earlier failures stopped before replacement and restarted the test application. Deliberate post-replacement failure/restore test running; original laptop service/data not touched.
 
 - 2026-10-26: Deliberate standalone failed-health transaction passed on Hayley: database snapshot restored (including removal of a newly created table), software/config restored, repeated rollback succeeds. Added installer-only deferred rollback: keep service stopped/gated until Inno finishes its own failed-install cleanup, then restore in DeinitializeSetup. This avoids Inno deleting restored files after the guard returns. Full installer negative test pending.
+
+- 2026-10-26: Native full installer safely refused Prepare before replacement (exit7), although direct32-bit and64-bit guard transactions pass. Added protected temporary PowerShell transcript and installer guard exit/path diagnostics to identify this difference; ordinary installer failure/recovery acceptance remains pending. No Workshop/stable release changed.
+
+- 2026-10-27: Implemented automatic-update candidate at Trevor's explicit request. Frozen stage-update CLI exits before external task launches installer. SYSTEM task runs daily3am, catches up when idle10minutes/onAC/network available, never reboots; signed stable feed, seven-day postponement, failed-release hash quarantine. Existing data/backup gate preserved; Rollback can recover missing config after interrupted replacement. Existing installation location fix UsePreviousAppDir=no verified by successful isolated full installer1.0.1. Source tests before build: signature7, automatic policy4, routes3 passed in dependency environment. Pending full new-binary/native task validation and main170 rollout. Recovery disable task AirTrack-Update-<service>, use saved recover.ps1 and transaction state; never bypass gate.

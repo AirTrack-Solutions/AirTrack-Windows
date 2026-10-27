@@ -11,8 +11,9 @@
 
 [Setup]
 AppName=AirTrack
-AppVersion=1.0.1
+AppVersion=1.0.2
 DefaultDirName={code:InstallDirectory}
+UsePreviousAppDir=no
 DisableDirPage=yes
 DisableProgramGroupPage=yes
 OutputBaseFilename=AirTrackSetup
@@ -28,6 +29,7 @@ Source: "mariadb-11.4.12-winx64.msi"; DestDir: "{tmp}"; Flags: deleteafterinstal
 
 ; MariaDB readiness check
 Source: "upgrade_guard.ps1"; Flags: dontcopy
+Source: "automatic_updates.ps1"; Flags: dontcopy
 
 Source: "wait_for_db.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
 
@@ -73,6 +75,16 @@ var
   UpgradeInstall, UpgradePrepared, UpgradeFinished: Boolean;
   AppService, TransactionFile: String;
 
+procedure RegisterAutomaticUpdates();
+var Home, Params: String; Code: Integer;
+begin
+  Home := GetIniString('app', 'data_dir', ExpandConstant('{commonappdata}\AirTrack'), ExpandConstant('{app}\airtrack.cfg'));
+  ExtractTemporaryFile('automatic_updates.ps1');
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\automatic_updates.ps1') + '" -Mode Register -InstallDir "' + ExpandConstant('{app}') + '" -DataDir "' + Home + '" -ServiceName "' + AppService + '"';
+  if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+    Log('WARNING: Logbook is installed but automatic update scheduling could not be enabled. Re-run the installer to repair scheduling.');
+end;
+
 function IsUpgrade: Boolean;
 begin
   Result := UpgradeInstall;
@@ -99,11 +111,15 @@ begin
 end;
 
 function RunGuard(Mode: String): Boolean;
-var Code: Integer; Params: String;
+var Code: Integer; Params: String; Diagnostic: AnsiString;
 begin
-  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.1 -StateFile "' + TransactionFile + '"';
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.2 -StateFile "' + TransactionFile + '"';
+  Params := Params + ' -DiagnosticsPath "' + ExpandConstant('{tmp}\upgrade-guard.log') + '"';
+  Log('Upgrade guard ' + Mode + ': ' + Params);
   if Mode = 'Finish' then Params := Params + ' -DeferRollback';
   Result := Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
+  Log('Upgrade guard exit: ' + IntToStr(Code));
+  if LoadStringFromFile(ExpandConstant('{tmp}\upgrade-guard.log'), Diagnostic) then Log(String(Diagnostic));
 end;
 
 function PrepareToInstall(var NeedsRestart: Boolean): String;
@@ -197,6 +213,7 @@ begin
       if not RunGuard('Finish') then
         RaiseException('AirTrack upgrade failed. Recovery was attempted; inspect the protected update transaction before retrying.');
       UpgradeFinished := True;
+      RegisterAutomaticUpdates();
       Exit;
     end;
     { Copy sidecar airtrack.cfg - preserve on reinstall }
@@ -226,5 +243,6 @@ begin
       ExpandConstant('{app}\_internal\app\core\package_installer.py'),
       'C:\ProgramData\AirTrack\core\package_installer.py', False
     );
+    RegisterAutomaticUpdates();
   end;
 end;

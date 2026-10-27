@@ -4,12 +4,14 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('Prepare','Finish','Rollback')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$InstallDir,
  [ValidatePattern('^[A-Za-z][A-Za-z0-9_-]{1,63}$')][string]$ServiceName='AirTrackClient',
- [string]$ExpectedVersion='1.0.1',
+ [string]$ExpectedVersion='1.0.2',
  [switch]$DeferRollback,
+ [string]$DiagnosticsPath,
  [Parameter(Mandatory=$true)][string]$StateFile
 )
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
+if($DiagnosticsPath){Start-Transcript -LiteralPath $DiagnosticsPath -Append -Force|Out-Null}
 $principal=New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
 if(-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Administrator approval is required'}
 function Ini([string]$File){
@@ -83,7 +85,7 @@ function RestoreState($State){
  $State.phase='rolled_back';SaveState $State
 }
 $InstallDir=[IO.Path]::GetFullPath($InstallDir).TrimEnd('\')
-if(-not (Test-Path -LiteralPath (Join-Path $InstallDir 'airtrack.cfg'))){throw 'Existing configuration missing; refusing an upgrade'}
+if($Mode -eq 'Prepare' -and -not (Test-Path -LiteralPath (Join-Path $InstallDir 'airtrack.cfg'))){throw 'Existing configuration missing; refusing an upgrade'}
 if((ServiceExe $ServiceName) -ine (Join-Path $InstallDir 'AirTrack.exe')){throw 'Installer target does not match the registered service'}
 NoLinks $InstallDir
 if($Mode -eq 'Prepare'){

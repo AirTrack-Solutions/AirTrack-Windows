@@ -1,8 +1,10 @@
 # File History: .github/workflows/build-windows.yml
 Journal Revision: 1
-Last Updated: 2026-10-26
+Last Updated: 2026-10-27
 
 ## Current State
+2026-10-27 candidate in progress: signed staging CLI plus independent SYSTEM daily/idle/on-AC task; seven-day postponement, pre-install hash recheck, existing transaction backups/rollback and interrupted-state recovery. Release identity1.0.2. Full Windows validation pending; no customer publication yet.
+
 2026-10-26: Windows client now includes the settings-backed METAR page and all current158 freshness/name/instrument-layout fixes. Local Weather settings persist station choices; NOTAM installer-only selection remains separate. Frozen timezone data is bundled.
 
 2026-10-25 verified outcome: Actual clean compiled Windows application from build40190160286 (source1e76b9798314a6bb2ddb67a58ca29ebb981a4921) passed on Hayley via SSH in debug mode against a private cloned database on127.0.0.1:33317. /notams returned200 with all six configured cards; YSWS and YMML API endpoints returned200/count0 (no notices in copied DB). Actual binary accepted six codes and rejected seven/duplicates. No pip overlays in final bundle. Original AirTrackClient service path/config preserved, source config SHA unchanged, original service and both existing DB services running after test, temporary DB/app stopped and port33317 closed. This is a compiled-app smoke test, not a full Inno wizard/fresh-install/LocalSystem service test.
@@ -37,3 +39,5 @@ Validate artifact and isolated Windows startup.
 - 2026-10-26: Original MariaDB download URL now redirects to a website rather than the MSI (confirmed during Hayley build). Changed cold-cache download to official archive.mariadb.org and verify both cached/downloaded MSI against its official sha256sums.txt value4d92fb5f16c0ec8d5a9fc1efdb33a377eaa712d6bce97451e151465c3041ccac. Current compiled Python artifact from build40312824955/source2a9f869 passes all10 updater contract tests. Final installer is being compiled natively on Hayley with source3d1eb2e guard cleanup correction.
 
 - 2026-10-26: Rotate the MariaDB cache key to include the verified digest prefix, avoiding reuse of unverified legacy cache content after the old download URL redirected to HTML. Hayley downloaded the official archive MSI and matched the full published SHA256 before native installer compilation.
+
+- 2026-10-27: Implemented automatic-update candidate at Trevor's explicit request. Frozen stage-update CLI exits before external task launches installer. SYSTEM task runs daily3am, catches up when idle10minutes/onAC/network available, never reboots; signed stable feed, seven-day postponement, failed-release hash quarantine. Existing data/backup gate preserved; Rollback can recover missing config after interrupted replacement. Existing installation location fix UsePreviousAppDir=no verified by successful isolated full installer1.0.1. Source tests before build: signature7, automatic policy4, routes3 passed in dependency environment. Pending full new-binary/native task validation and main170 rollout. Recovery disable task AirTrack-Update-<service>, use saved recover.ps1 and transaction state; never bypass gate.

@@ -11,6 +11,7 @@ from extensions import db
 from sqlalchemy import text
 from core.windows_updates import DEFAULT_FEED, UpdateError, check_release, download_installer, version_tuple
 from utils.settings_utils import get_current_theme
+from core.windows_auto_updates import postpone
 
 updates_bp = Blueprint('updates', __name__, url_prefix='/updates')
 ASSETS = Path(sys._MEIPASS) / 'app' if getattr(sys, 'frozen', False) else Path(__file__).resolve().parents[1]
@@ -50,7 +51,23 @@ def running_version():
 
 @updates_bp.get('/')
 def updates_page():
-    return render_template('updates.html', installed_version=installed_version(), selected_theme=get_current_theme())
+    home = Path(os.environ.get('AIRTRACK_HOME', Path.home() / 'AirTrack'))
+    status = {}
+    try:
+        status = json.loads((home / 'updates' / 'automatic-status.json').read_text(encoding='utf-8-sig'))
+    except (OSError, ValueError):
+        pass
+    return render_template('updates.html', installed_version=installed_version(), selected_theme=get_current_theme(), automatic_status=status)
+
+
+@updates_bp.post('/postpone')
+def postpone_update():
+    try:
+        days = (request.get_json(silent=True) or {}).get('days')
+        value = postpone(os.environ.get('AIRTRACK_HOME', Path.home() / 'AirTrack'), days)
+        return jsonify(ok=True, **value)
+    except UpdateError as exc:
+        return jsonify(ok=False, error=str(exc)), 400
 
 
 @updates_bp.get('/check')

@@ -32,6 +32,7 @@ jobs:
         run: |
           python tests/test_windows_updates.py
           python tests/test_update_routes.py
+          python tests/test_windows_auto_updates.py
 
       - name: Build with PyInstaller
         working-directory: gates/gate3

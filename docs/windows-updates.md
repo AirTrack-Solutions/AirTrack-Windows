@@ -1,10 +1,12 @@
 # Windows V1 application updates
 
-Status: candidate under Windows validation, 2026-10-26. Do not treat compilation as release approval.
+Status: automatic-update candidate1.0.2 under Windows validation, 2026-10-27. Do not treat compilation as release approval.
 
-Clients use **Check for updates** in Logbook. The application checks a signed release manifest over HTTPS, verifies the product/version/expiry, downloads the exact signed size/hash and offers a saved installer. It never launches an interactive installer from the Windows service. The user saves and runs the installer and approves Windows elevation.
+New installations register `AirTrack-Update-AirTrackClient`, a SYSTEM scheduled task. It checks the signed stable release feed daily at3am and catches up when Windows is idle for ten minutes, online and on AC power. It does not wake or reboot the computer. The frozen `stage-update` command verifies and downloads the release, then exits before a separate PowerShell runner starts the silent installer, avoiding frozen-file locks. Existing transactions requiring recovery are rolled back before any new release is attempted. Failed release hashes are quarantined until a corrected release is published; an administrator can inspect/recover and remove `updates/failed-release.json` to retry deliberately.
 
-Older clients require one bootstrap upgrade to acquire this page. Existing customer ZIPs and installed executables do not acquire features when the Workshop base changes.
+Logbook's Application updates page shows the last check/status and allows postponing automatic updates for seven days or resuming them. Manual verified installer download remains available. Older clients require one bootstrap upgrade; future releases use the installed task. A fresh owner release still requires a compiled and verified installer plus signed publication. Updating the Workshop base alone does not upgrade installed clients.
+
+To disable the mechanism administratively, disable the named scheduled task. Preserve recovery files. The runner is in the protected application-data updates folder; installing it requires administrator approval once. No interactive installer is launched from the application service. Scheduling failure is logged after a completed upgrade rather than triggering unsafe installer cleanup of already-verified application files; re-run the installer to repair scheduling.
 
 ## Upgrade transaction
 

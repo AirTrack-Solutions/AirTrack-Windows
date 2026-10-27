@@ -118,6 +118,13 @@ def _bootstrap_core():
         pass
 
 
+if len(sys.argv) >= 2 and sys.argv[1] == 'stage-update':
+    # Do not start Flask, schedulers or database migrations in the updater.
+    assets = Path(getattr(sys, '_MEIPASS', Path(__file__).resolve().parents[2])) / 'app'
+    sys.path.insert(0, str(assets))
+    from core.windows_auto_updates import cli
+    raise SystemExit(cli())
+
 _load_config()
 _bootstrap_core()
 
