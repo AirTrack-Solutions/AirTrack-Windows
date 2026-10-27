@@ -3,15 +3,14 @@ Journal Revision: 1
 Last Updated: 2026-10-27
 
 ## Current State
-2026-10-27 candidate in progress: signed staging CLI plus independent SYSTEM daily/idle/on-AC task; seven-day postponement, pre-install hash recheck, existing transaction backups/rollback and interrupted-state recovery. Release identity1.0.2. Full Windows validation pending; no customer publication yet.
+Released/deployed1.0.3 on2026-10-27. Main Hayley (.170) bootstrapped to2 and then genuinely upgraded2->3 by the SYSTEM updater from the signed stable feed; database/aircraft/config/settings preservation passed. Native1.0.3 final SHA256c25fd4c9a7bdf8965988a85c70e5bcfd1836dcc21b244f6b9855802e9ca373eb (171899113bytes), native source99007a7 with release data3e78ec2; unchanged Python code from verified build40429896630/ced6ee6. Daily3am task catches up idle/online/onAC, continues if unplugged, supports seven-day postponement, no Windows reboot. See operations/windows_application_updates.md for acceptance and recovery.
 
-Implementation planned: Administrator-installed SYSTEM scheduled update runner, next-run recovery and daily schedule.
 
 ## Known Issues
-Must validate compiled Windows path before customer publication.
+Windows service/update path verified on Hayley; fresh wizard path was not re-exercised.
 
 ## Future Work
-Automated signature/policy tests and isolated Hayley runtime tests.
+See the operations journal for release maintenance and remaining fresh-install validation.
 
 ## Entry Log
 - 2026-10-27: Created before implementation under Trevor's explicit automatic update authorization. Use existing signed installer feed and transaction guard; no trust bypass, private keys or credentials in clients. Recovery: remove scheduled task to disable automatic runs; preserve installer transaction snapshots.
@@ -23,3 +22,5 @@ Automated signature/policy tests and isolated Hayley runtime tests.
 - 2026-10-27: Follow-up1.0.3 will retain AC-only task starts but add DontStopIfGoingOnBatteries so unplugging does not interrupt an in-progress upgrade. Python code unchanged from verified build40429896630; release identity data/native installer advance to1.0.3. This also permits genuine2->3 SYSTEM-task validation after main bootstrap2, instead of relying only on metadata simulation. Native compilation and signed candidate test pending.
 
 - 2026-10-27: Tightened terminal checkpoints before exposing requests: save completed/rolled_back durably before gate removal or restart, so a crash cannot replay a snapshot over later user edits. External runner resumes terminal gate cleanup after version/database health verification, preserving post-completion data. Installer stages the compatible recovery runner outside the program tree after Prepare and before replacement, so an old task can launch recovery after interruption. Candidate1.0.3 is being rebuilt before stable promotion/main2->3 update. Test completed-marker gate cleanup must preserve a SQL marker created after success. Preparing/refused legacy bootstrap may still require administrator recovery after power loss; no trust/gate bypass.
+
+- 2026-10-27 final verification: signature7 + automatic policy4 + route3 tests passed; actual native2/3 upgrade preservation; failed-migration installer rollback; interrupted missing-file recovery; actual SYSTEM terminal gate cleanup retained a post-success SQL marker; genuine signed2->3 SYSTEM update passed on test and main170. Main1aircraft identity/notes,15settings and2existing configuration/runtime files preserved in final trial. Main healthdatabase_ready/version1.0.3, taskSYSTEM/idle/network/AC-only start/stop-on-unplug=false. Validation tasks removed and test app/DB stopped+disabled; original main AirTrackDB/MariaDB running. Workshop5500/5510 detect final base, no customer ZIP/provision/email. Stable/candidate expiry2026-11-26 requires renewed owner publication. Compiled Python unchanged from40429896630; native/data source99007a7/3e78ec2. Recovery uses saved SQL/software/recover.ps1 below C:\ProgramData\AirTrack\updates\backups and active-AirTrackClient.json; installer base backups retained. No true power-cut or fresh wizard test claimed.

@@ -3,17 +3,14 @@ Journal Revision: 1
 Last Updated: 2026-10-27
 
 ## Current State
-2026-10-27 candidate in progress: signed staging CLI plus independent SYSTEM daily/idle/on-AC task; seven-day postponement, pre-install hash recheck, existing transaction backups/rollback and interrupted-state recovery. Release identity1.0.2. Full Windows validation pending; no customer publication yet.
+Released/deployed1.0.3 on2026-10-27. Main Hayley (.170) bootstrapped to2 and then genuinely upgraded2->3 by the SYSTEM updater from the signed stable feed; database/aircraft/config/settings preservation passed. Native1.0.3 final SHA256c25fd4c9a7bdf8965988a85c70e5bcfd1836dcc21b244f6b9855802e9ca373eb (171899113bytes), native source99007a7 with release data3e78ec2; unchanged Python code from verified build40429896630/ced6ee6. Daily3am task catches up idle/online/onAC, continues if unplugged, supports seven-day postponement, no Windows reboot. See operations/windows_application_updates.md for acceptance and recovery.
 
-2026-10-25 verified outcome: Actual clean compiled Windows application from build40190160286 (source1e76b9798314a6bb2ddb67a58ca29ebb981a4921) passed on Hayley via SSH in debug mode against a private cloned database on127.0.0.1:33317. /notams returned200 with all six configured cards; YSWS and YMML API endpoints returned200/count0 (no notices in copied DB). Actual binary accepted six codes and rejected seven/duplicates. No pip overlays in final bundle. Original AirTrackClient service path/config preserved, source config SHA unchanged, original service and both existing DB services running after test, temporary DB/app stopped and port33317 closed. This is a compiled-app smoke test, not a full Inno wizard/fresh-install/LocalSystem service test.
-
-Installer copies the customer license sidecar into _internal/config, creating that directory first, matching the actual frozen config.license runtime path.
 
 ## Known Issues
-Actual Windows debug startup logged missing license until the sidecar was copied to the path named in that log. Existing customer license edition semantics are separate and unchanged.
+The earlier missing-license path fault was resolved by copying to the frozen config path and testing licence preservation. Existing customer license edition semantics are separate and unchanged.
 
 ## Future Work
-Copy license into actual frozen config path and verify rebuilt artifact.
+Retain verified release/recovery artifacts; separately validate the fresh wizard in a disposable environment.
 
 ## Entry Log
 - 2026-10-25: Created before correcting the license destination found during authorized Hayley smoke testing. Read installer and app/config/license.py; debug log establishes runtime path. Existing laptop installation not overwritten.
@@ -39,3 +36,5 @@ Copy license into actual frozen config path and verify rebuilt artifact.
 - 2026-10-27: Follow-up1.0.3 will retain AC-only task starts but add DontStopIfGoingOnBatteries so unplugging does not interrupt an in-progress upgrade. Python code unchanged from verified build40429896630; release identity data/native installer advance to1.0.3. This also permits genuine2->3 SYSTEM-task validation after main bootstrap2, instead of relying only on metadata simulation. Native compilation and signed candidate test pending.
 
 - 2026-10-27: Tightened terminal checkpoints before exposing requests: save completed/rolled_back durably before gate removal or restart, so a crash cannot replay a snapshot over later user edits. External runner resumes terminal gate cleanup after version/database health verification, preserving post-completion data. Installer stages the compatible recovery runner outside the program tree after Prepare and before replacement, so an old task can launch recovery after interruption. Candidate1.0.3 is being rebuilt before stable promotion/main2->3 update. Test completed-marker gate cleanup must preserve a SQL marker created after success. Preparing/refused legacy bootstrap may still require administrator recovery after power loss; no trust/gate bypass.
+
+- 2026-10-27 final verification: signature7 + automatic policy4 + route3 tests passed; actual native2/3 upgrade preservation; failed-migration installer rollback; interrupted missing-file recovery; actual SYSTEM terminal gate cleanup retained a post-success SQL marker; genuine signed2->3 SYSTEM update passed on test and main170. Main1aircraft identity/notes,15settings and2existing configuration/runtime files preserved in final trial. Main healthdatabase_ready/version1.0.3, taskSYSTEM/idle/network/AC-only start/stop-on-unplug=false. Validation tasks removed and test app/DB stopped+disabled; original main AirTrackDB/MariaDB running. Workshop5500/5510 detect final base, no customer ZIP/provision/email. Stable/candidate expiry2026-11-26 requires renewed owner publication. Compiled Python unchanged from40429896630; native/data source99007a7/3e78ec2. Recovery uses saved SQL/software/recover.ps1 below C:\ProgramData\AirTrack\updates\backups and active-AirTrackClient.json; installer base backups retained. No true power-cut or fresh wizard test claimed.
