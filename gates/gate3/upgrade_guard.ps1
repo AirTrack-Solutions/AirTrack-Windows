@@ -4,7 +4,7 @@ param(
  [Parameter(Mandatory=$true)][ValidateSet('Prepare','Finish','Rollback')][string]$Mode,
  [Parameter(Mandatory=$true)][string]$InstallDir,
  [ValidatePattern('^[A-Za-z][A-Za-z0-9_-]{1,63}$')][string]$ServiceName='AirTrackClient',
- [string]$ExpectedVersion='1.0.2',
+ [string]$ExpectedVersion='1.0.3',
  [switch]$DeferRollback,
  [string]$DiagnosticsPath,
  [Parameter(Mandatory=$true)][string]$StateFile

@@ -11,7 +11,7 @@
 
 [Setup]
 AppName=AirTrack
-AppVersion=1.0.2
+AppVersion=1.0.3
 DefaultDirName={code:InstallDirectory}
 UsePreviousAppDir=no
 DisableDirPage=yes
@@ -113,7 +113,7 @@ end;
 function RunGuard(Mode: String): Boolean;
 var Code: Integer; Params: String; Diagnostic: AnsiString;
 begin
-  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.2 -StateFile "' + TransactionFile + '"';
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.3 -StateFile "' + TransactionFile + '"';
   Params := Params + ' -DiagnosticsPath "' + ExpandConstant('{tmp}\upgrade-guard.log') + '"';
   Log('Upgrade guard ' + Mode + ': ' + Params);
   if Mode = 'Finish' then Params := Params + ' -DeferRollback';
@@ -126,7 +126,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Home, Cfg: String;
 begin
   Result := '';
-  if ExpandConstant('{param:RELEASEVERSION|1.0.2}') <> '1.0.2' then
+  if ExpandConstant('{param:RELEASEVERSION|1.0.3}') <> '1.0.3' then
   begin
     Result := 'The signed release version does not match this installer. Nothing was changed.';
     Exit;
