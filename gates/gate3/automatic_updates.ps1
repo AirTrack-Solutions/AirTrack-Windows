@@ -3,7 +3,8 @@ param(
  [ValidateSet('Register','Run')][string]$Mode='Run',
  [Parameter(Mandatory=$true)][string]$InstallDir,
  [Parameter(Mandatory=$true)][string]$DataDir,
- [ValidatePattern('^[A-Za-z][A-Za-z0-9_-]{1,63}$')][string]$ServiceName='AirTrackClient'
+ [ValidatePattern('^[A-Za-z][A-Za-z0-9_-]{1,63}$')][string]$ServiceName='AirTrackClient',
+ [string]$Feed='https://airtracksolutions.com/api/wombat/windows-release'
 )
 $ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
@@ -15,7 +16,7 @@ if($Mode -eq 'Register'){
  & icacls.exe $updates /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F' '*S-1-5-18:(OI)(CI)F'|Out-Null
  if($LASTEXITCODE -ne 0){throw 'Cannot protect automatic updater'}
  Copy-Item -LiteralPath $PSCommandPath -Destination $runner -Force
- $arguments='-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$runner+'" -Mode Run -InstallDir "'+$InstallDir+'" -DataDir "'+$DataDir+'" -ServiceName "'+$ServiceName+'"'
+ $arguments='-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$runner+'" -Mode Run -InstallDir "'+$InstallDir+'" -DataDir "'+$DataDir+'" -ServiceName "'+$ServiceName+'" -Feed "'+$Feed+'"'
  $action=New-ScheduledTaskAction -Execute ($env:SystemRoot+'\System32\WindowsPowerShell\v1.0\powershell.exe') -Argument $arguments
  $trigger=New-ScheduledTaskTrigger -Daily -At '03:00'
  $settings=New-ScheduledTaskSettingsSet -StartWhenAvailable -RunOnlyIfNetworkAvailable -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Hours 2) -RunOnlyIfIdle -IdleDuration (New-TimeSpan -Minutes 10) -IdleWaitTimeout (New-TimeSpan -Hours 1) -DontStopOnIdleEnd
@@ -37,7 +38,7 @@ if(Test-Path $stateFile){
  }
 }
 $exe=Join-Path $InstallDir 'AirTrack.exe'
-$output=& $exe stage-update
+$output=& $exe stage-update $Feed
 if($LASTEXITCODE -ne 0){exit 1}
 $result=($output -join "`n")|ConvertFrom-Json
 if($result.status -ne 'ready'){exit 0}
@@ -46,7 +47,7 @@ $downloadRoot=[IO.Path]::GetFullPath((Join-Path $updates 'downloads'))+'\'
 if(-not $installer.StartsWith($downloadRoot,[StringComparison]::OrdinalIgnoreCase)){throw 'Unexpected installer directory'}
 if((Get-Item -LiteralPath $installer).Length -ne $result.size -or (Get-FileHash -LiteralPath $installer -Algorithm SHA256).Hash.ToLowerInvariant() -cne $result.sha256){throw 'Staged installer changed; refusing execution'}
 $log=Join-Path $updates ('install-'+$result.version+'.log')
-$process=Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/SERVICENAME='+$ServiceName),('/LOG="'+$log+'"')) -PassThru
+$process=Start-Process -FilePath $installer -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/SERVICENAME='+$ServiceName),('/RELEASEVERSION='+$result.version),('/LOG="'+$log+'"')) -PassThru
 $handle=$process.Handle
 if(-not $process.WaitForExit(3600000)){throw 'Installer is still running; inspect transaction state'}
 if($process.ExitCode -ne 0){

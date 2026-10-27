@@ -126,6 +126,11 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Home, Cfg: String;
 begin
   Result := '';
+  if ExpandConstant('{param:RELEASEVERSION|1.0.2}') <> '1.0.2' then
+  begin
+    Result := 'The signed release version does not match this installer. Nothing was changed.';
+    Exit;
+  end;
   UpgradeInstall := RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\' + AppService);
   if UpgradeInstall then
   begin
