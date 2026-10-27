@@ -138,7 +138,16 @@ begin
     Home := GetIniString('app', 'data_dir', ExpandConstant('{commonappdata}\AirTrack'), Cfg);
     TransactionFile := AddBackslash(Home) + 'updates\active-' + AppService + '.json';
     ExtractTemporaryFile('upgrade_guard.ps1');
-    if RunGuard('Prepare') then UpgradePrepared := True
+    if RunGuard('Prepare') then
+    begin
+      UpgradePrepared := True;
+      // Preserve recovery control outside the program tree before replacement.
+      // An existing scheduled task can recover even if power fails before
+      // the final task registration or gate cleanup.
+      ExtractTemporaryFile('automatic_updates.ps1');
+      if not FileCopy(ExpandConstant('{tmp}\automatic_updates.ps1'), AddBackslash(Home) + 'updates\automatic_updates.ps1', False) then
+        Result := 'Could not preserve the recovery runner. Installation stopped.';
+    end
     else Result := 'AirTrack could not create a verified backup. Installation has been stopped. See the protected updates folder in the application data directory.';
   end
   else if (AppService <> 'AirTrackClient') or FileExists(ExpandConstant('{app}\airtrack.cfg')) then

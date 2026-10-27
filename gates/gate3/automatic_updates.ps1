@@ -26,6 +26,22 @@ if($Mode -eq 'Register'){
 $stateFile=Join-Path $updates ('active-'+$ServiceName+'.json')
 if(Test-Path $stateFile){
  $state=Get-Content -LiteralPath $stateFile -Raw|ConvertFrom-Json
+ if($state.install_dir -ine $InstallDir -or $state.service -ne $ServiceName){throw 'Recovery state does not match this installation'}
+ if($state.phase -in @('completed','rolled_back') -and (Test-Path $state.flag)){
+  # A durable terminal checkpoint precedes opening the request gate.
+  # Finish gate cleanup after a crash, never replay the SQL snapshot over
+  # user edits made after an already completed installation/recovery.
+  if((Get-Service $ServiceName).Status -ne 'Running'){Start-Service $ServiceName}
+  $expected=$state.version;if($state.phase -eq 'rolled_back'){$expected=$state.previous_version}
+  $healthy=$false
+  for($i=0;$i -lt 45;$i++){
+   try{$health=Invoke-RestMethod ("http://127.0.0.1:"+$state.port+'/updates/api/version') -TimeoutSec 2;if($expected -and $health.product -eq 'AirTrack-Windows' -and $health.version -eq $expected -and $health.database_ready){$healthy=$true;break}}catch{}
+   Start-Sleep -Seconds 1
+  }
+  if(-not $healthy){throw 'Terminal transaction needs manual verification; request gate retained'}
+  Remove-Item -LiteralPath $state.flag -ErrorAction Stop
+  exit 0
+ }
  if($state.phase -notin @('completed','rolled_back')){
   $recovery=Join-Path $state.backup 'recover.ps1'
   $backupRoot=[IO.Path]::GetFullPath((Join-Path $updates 'backups'))+'\'

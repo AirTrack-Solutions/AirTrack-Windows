@@ -80,9 +80,9 @@ function RestoreState($State){
  NoLinks $InstallDir
  Get-ChildItem -LiteralPath $InstallDir -Force | Remove-Item -Recurse -Force
  CopyTree (Join-Path $State.backup 'application') $InstallDir
+ $State.phase='rolled_back';SaveState $State
  Remove-Item -LiteralPath $State.flag -ErrorAction SilentlyContinue
  StartApp
- $State.phase='rolled_back';SaveState $State
 }
 $InstallDir=[IO.Path]::GetFullPath($InstallDir).TrimEnd('\')
 if($Mode -eq 'Prepare' -and -not (Test-Path -LiteralPath (Join-Path $InstallDir 'airtrack.cfg'))){throw 'Existing configuration missing; refusing an upgrade'}
@@ -91,8 +91,8 @@ NoLinks $InstallDir
 if($Mode -eq 'Prepare'){
  if(Test-Path -LiteralPath $StateFile){$old=Get-Content -LiteralPath $StateFile -Raw|ConvertFrom-Json;if($old.phase -notin @('completed','rolled_back')){throw 'An earlier update requires recovery before another update'}}
  $config=Ini (Join-Path $InstallDir 'airtrack.cfg')
- $installedMeta=Join-Path $InstallDir '_internal\app\windows_release.json'
- if(Test-Path $installedMeta){$installed=Get-Content $installedMeta -Raw|ConvertFrom-Json;if([version]$installed.version -gt [version]$ExpectedVersion){throw 'Refusing to replace a newer application version'}}
+ $installedMeta=Join-Path $InstallDir '_internal\app\windows_release.json';$previousVersion=''
+ if(Test-Path $installedMeta){$installed=Get-Content $installedMeta -Raw|ConvertFrom-Json;$previousVersion=$installed.version;if([version]$installed.version -gt [version]$ExpectedVersion){throw 'Refusing to replace a newer application version'}}
  $environment=(Get-ItemProperty ('HKLM:\SYSTEM\CurrentControlSet\Services\'+$ServiceName) -Name Environment -ErrorAction SilentlyContinue).Environment
  if(@($environment | Where-Object {$_ -match '^(DATABASE_URI|DB_HOST|DB_PORT|DB_NAME|DB_USER|DB_PASSWORD|AIRTRACK_HOME|AIRTRACK_PORT)='}).Count){throw 'Service environment overrides require manual review before updating'}
  if($config.database.uri){
@@ -111,7 +111,7 @@ if($Mode -eq 'Prepare'){
  $db=Get-CimInstance Win32_Service -Filter "Name='AirTrackDB'";if(-not $db -or $db.PathName -notmatch '^\s*"([^"]+)"'){throw 'Cannot locate the installed database tools'}
  $dbBin=Split-Path $matches[1];if(-not(Test-Path (Join-Path $dbBin 'mariadb-dump.exe'))){throw 'Database backup tool unavailable'}
  $port=$config.app.port;if(-not $port){$port=5000};if([int]$port -lt 1 -or [int]$port -gt 65535){throw 'Invalid application port'}
- $state=[ordered]@{phase='preparing';install_dir=$InstallDir;service=$ServiceName;backup=$backup;flag=(Join-Path $appDataRoot 'update-in-progress.json');db_bin=$dbBin;db_name=$config.database.name;port=[int]$port;version=$ExpectedVersion}
+ $state=[ordered]@{phase='preparing';install_dir=$InstallDir;service=$ServiceName;backup=$backup;flag=(Join-Path $appDataRoot 'update-in-progress.json');db_bin=$dbBin;db_name=$config.database.name;port=[int]$port;version=$ExpectedVersion;previous_version=$previousVersion}
  Copy-Item -LiteralPath $PSCommandPath -Destination (Join-Path $backup 'recover.ps1');SaveState $state
  try{
   StopApp
@@ -125,14 +125,15 @@ if($Mode -eq 'Prepare'){
   }finally{Remove-Item -LiteralPath $option -ErrorAction SilentlyContinue}
   $state.phase='prepared';SaveState $state
  }catch{
+  $state.phase='rolled_back';SaveState $state
   Remove-Item -LiteralPath $state.flag -ErrorAction SilentlyContinue
-  StartApp;$state.phase='rolled_back';SaveState $state;throw
+  StartApp;throw
  }
 }elseif($Mode -in @('Finish','Rollback')){
  $state=Get-Content -LiteralPath $StateFile -Raw|ConvertFrom-Json
- if($Mode -eq 'Rollback' -and $state.phase -eq 'rolled_back' -and $state.install_dir -ieq $InstallDir -and $state.service -eq $ServiceName){exit 0}
+ if($Mode -eq 'Rollback' -and $state.phase -eq 'rolled_back' -and $state.install_dir -ieq $InstallDir -and $state.service -eq $ServiceName){Remove-Item -LiteralPath $state.flag -ErrorAction SilentlyContinue;StartApp;exit 0}
  if($Mode -eq 'Rollback' -and $state.phase -eq 'preparing' -and $state.install_dir -ieq $InstallDir -and $state.service -eq $ServiceName){
-  Remove-Item -LiteralPath $state.flag -ErrorAction SilentlyContinue;StartApp;$state.phase='rolled_back';SaveState $state;exit 0
+  $state.phase='rolled_back';SaveState $state;Remove-Item -LiteralPath $state.flag -ErrorAction SilentlyContinue;StartApp;exit 0
  }
  if($state.install_dir -ine $InstallDir -or $state.service -ne $ServiceName -or $state.phase -notin @('prepared','checking')){throw 'Invalid or already completed recovery state'}
  $expectedRoot=Join-Path (Split-Path $StateFile) 'backups'
@@ -152,8 +153,8 @@ if($Mode -eq 'Prepare'){
    Start-Sleep -Seconds 1
   }
   if(-not $healthy){throw 'Updated application failed its version/database health check'}
-  Remove-Item -LiteralPath $state.flag -ErrorAction Stop
   $state.phase='completed';SaveState $state
+  Remove-Item -LiteralPath $state.flag -ErrorAction Stop
  }catch{
   $failure=$_
   if($DeferRollback){
