@@ -1,8 +1,9 @@
 # File History: gates/gate3/requirements.txt
 Journal Revision: 1
-Last Updated: 2026-10-26
+Last Updated: 2026-11-01
 
 ## Current State
+Upstream dependency/content-lookup repair integrated while preserving the existing feature and verification history.
 2026-10-26: Windows client now includes the settings-backed METAR page and all current158 freshness/name/instrument-layout fixes. Local Weather settings persist station choices; NOTAM installer-only selection remains separate. Frozen timezone data is bundled.
 
 2026-10-25 verified outcome: Actual clean compiled Windows application from build40190160286 (source1e76b9798314a6bb2ddb67a58ca29ebb981a4921) passed on Hayley via SSH in debug mode against a private cloned database on127.0.0.1:33317. /notams returned200 with all six configured cards; YSWS and YMML API endpoints returned200/count0 (no notices in copied DB). Actual binary accepted six codes and rejected seven/duplicates. No pip overlays in final bundle. Original AirTrackClient service path/config preserved, source config SHA unchanged, original service and both existing DB services running after test, temporary DB/app stopped and port33317 closed. This is a compiled-app smoke test, not a full Inno wizard/fresh-install/LocalSystem service test.
@@ -29,3 +30,14 @@ Verify the retried Windows installer build.
 - 2026-10-26: Added tzdata2026.5 (version verified via official PyPI JSON) and collect-all tzdata for frozen Windows ZoneInfo support required by METAR observation dates. Existing optional Astral behavior unchanged. Rebuild/actual Windows timezone smoke verification pending. Recovery: revert this scoped addition; retain prior base until tests pass.
 
 - 2026-10-26 verified: Build40298068941 (sourcebaeef32ec3e539ccc1ffc3defb4b8a47c4e0b842) succeeded and its clean compiled bundle passed on Hayley in debug mode against the isolated cloned DB on33317. Verified METAR menu, Settings Weather save/normalization/duplicates/clear/invalid rejection/omitted preservation, live YSWS/YSSY airport cards, local timezone + UTC observation display, no negative instrument offset, and NOTAM six-card/API regressions. No dependency overlays. Original AirTrackClient path/config unchanged (SHA equality), restarted/running; original AirTrackDB/MariaDB running; test app/DB stopped and33317 closed. Full Inno wizard/fresh install/LocalSystem service-mode not exercised. Implementations dfa9700 (METAR/settings), baeef32 (Windows timezone data); source remains on codex/v1-notam-airports-20261025, not merged/published as a release. Earlier timezone-incomplete build superseded/cancelled. New base details and recovery recorded in docs/file_history/AirTrackSetup.exe.md. Existing customer ZIPs/installations unchanged; no automatic rollout or signed app-update publication. Reuse local settings/direct public feeds rather than pointing clients at158/ATC. No additional poller or provider credentials.
+
+
+- 2026-10-30: Created before editing for Trevor's critter health repair. Raise Werkzeug to3.1.9 for GHSA-g6x2-hccm-hh4m; Logbook Pillow to>=13.0.0,<14 for seven current image-parser/encoder advisories. Both support configured Python3.11+. No runtime/release deployment intended by source edit. Recovery: revert this manifest change and rebuild only if necessary, understanding old versions restore known vulnerabilities.
+
+- 2026-10-30 compatibility repair: Full resolver exposed existing pyOpenSSL26.3.0/cryptography50.0.0 conflict. Raise pyOpenSSL to26.4.0, matching already-resolvable Logbook/Client pins, so the patched environment can be built without downgrading cryptography.
+
+- 2026-10-30 candidate verification: Isolated Werkzeug3.1.9/Flask3.1.3 reject Windows NUL:/CON:/aux:/NUL.txt:; normal file download and traversal404 controls pass. Pillow13.0.0 decodes JPEG/PNG/WebP/BMP/TIFF, exif-transposes/converts/thumbnails/savesJPEG; malformed Image.merge first-band and TIFF predictor fail safely. pip check passes in focused environment. Full manifest dry-run resolution passes; Gate2/Gate3 cross-platform wheel resolution used Windows Python3.12, Lite Python3.11. No installer or live web image rebuilt; this is a source dependency repair, not a claim installed clients have upgraded. Existing Windows/Mac pyOpenSSL26.3/cryptography50 conflict repaired with26.4. GitHub advisory closure pending default-branch processing.
+
+- 2026-10-30 native check: Disposable copy of source158 scheduler image Python3.11 installed Werkzeug3.1.9, Pillow13.0.0 and Flask3.1.3 only under /tmp/validated. Imports, PNG/EXIF/thumbnail/JPEG and Windows-device rejection controls passed. Container automatically removed; no live environment packages changed.
+
+- 2026-11-01: Resolved add/add journal conflict by retaining prior feature/deployment history and upstream dependency/lookup validation records. Runtime source merged without conflict; recovery uses backup/pre-reconcile-20261101.
