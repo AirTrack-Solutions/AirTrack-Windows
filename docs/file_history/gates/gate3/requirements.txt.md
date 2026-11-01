@@ -41,3 +41,8 @@ Verify the retried Windows installer build.
 - 2026-10-30 native check: Disposable copy of source158 scheduler image Python3.11 installed Werkzeug3.1.9, Pillow13.0.0 and Flask3.1.3 only under /tmp/validated. Imports, PNG/EXIF/thumbnail/JPEG and Windows-device rejection controls passed. Container automatically removed; no live environment packages changed.
 
 - 2026-11-01: Resolved add/add journal conflict by retaining prior feature/deployment history and upstream dependency/lookup validation records. Runtime source merged without conflict; recovery uses backup/pre-reconcile-20261101.
+
+
+- 2026-10-30 active-workspace integration: Apply only the tested dependency constraints to this existing checkout, preserving its other branch-specific requirements and unrelated edits. Canonical default-branch security changes are already published; existing installed binaries/images have not been rebuilt. Patched package and full-manifest resolver checks are documented above.
+
+- 2026-11-01: Integrated the already-published dependency repair from the remote branch rather than making a duplicate source fix. Retained local validation/provenance notes; branch-specific client pins preserved. This is repository reconciliation only, not a package/image/installer rollout. Recovery uses backup/pre-reconcile-20261101 and saved source snapshot.
