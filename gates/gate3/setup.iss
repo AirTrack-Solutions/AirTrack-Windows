@@ -11,7 +11,7 @@
 
 [Setup]
 AppName=AirTrack
-AppVersion=1.0.5
+AppVersion=1.1.0
 DefaultDirName={code:InstallDirectory}
 UsePreviousAppDir=no
 DisableDirPage=yes

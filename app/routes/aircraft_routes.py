@@ -836,6 +836,12 @@ def edit_aircraft(aircraft_id: int):
                 )
 
             db.session.commit()
+            try:
+                from utils.aircraft_photo_metadata import refresh_linked_photos
+                refresh_linked_photos(db.session, aircraft_id, current_app.static_folder)
+            except Exception:
+                logger.exception('Aircraft saved but linked photo metadata refresh failed')
+                flash('Aircraft saved; some photo metadata could not be refreshed.', 'warning')
 
             flash(
                 "Aircraft updated and new flight logged." if save_mode == "new"
@@ -877,7 +883,7 @@ def upload_aircraft_image():
 
         # Look up the AircraftID
         ac_row = db.session.execute(
-            text("SELECT AircraftID, Aircraft_Image FROM aircraft WHERE UPPER(TRIM(Registration)) = :reg"),
+            text("SELECT AircraftID, Aircraft_Image, Registration, MSN, ICAO_Address FROM aircraft WHERE UPPER(TRIM(Registration)) = :reg"),
             {"reg": registration},
         ).fetchone()
 
@@ -912,7 +918,8 @@ def upload_aircraft_image():
         filepath = os.path.join(upload_dir, filename)
 
         try:
-            image.save(filepath)
+            from utils.aircraft_photo_metadata import identity, save_photo
+            save_photo(image.stream, filepath, identity(ac_row[2], ac_row[3], ac_row[4]))
 
             if next_number == 1:
                 # Save as primary image
@@ -935,6 +942,8 @@ def upload_aircraft_image():
                     )
 
             flash(f"Image {next_number} uploaded successfully!", "success")
+            from routes.community_photos import maybe_share_upload
+            maybe_share_upload(aircraft_id, filename)
 
         except Exception:
             logger.exception("❌ Failed image upload")

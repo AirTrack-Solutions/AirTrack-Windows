@@ -996,6 +996,8 @@ def backup_database():
             filepath.unlink(missing_ok=True)
             raise RuntimeError("mysqldump failed")
 
+        from utils.photo_backup import backup_for_app
+        backup_for_app(filepath, app.static_folder)
         log_admin_action(f"Database backup saved to {filepath}")
 
     except Exception as e:
@@ -1260,6 +1262,8 @@ app.register_blueprint(airlines_bp)
 app.register_blueprint(reports_bp)
 app.register_blueprint(airports_bp)
 app.register_blueprint(aircraft_bp)
+from routes.community_photos import init_community_photos
+init_community_photos(app)
 app.register_blueprint(admin_util_bp)
 app.register_blueprint(add_aircraft_bp)
 app.register_blueprint(edit_aircraft_bp)

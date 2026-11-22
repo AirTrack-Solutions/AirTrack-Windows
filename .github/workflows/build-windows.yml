@@ -3,6 +3,13 @@ name: Build Windows Installer
 on:
   workflow_dispatch:
   push:
+    branches:
+      - 'codex/community-photos-20261122'
+    paths:
+      - 'app/**'
+      - 'gates/**'
+      - 'tests/**'
+      - '.github/workflows/build-windows.yml'
     tags:
       - 'v*'
 
@@ -33,6 +40,8 @@ jobs:
           python tests/test_windows_updates.py
           python tests/test_update_routes.py
           python tests/test_windows_auto_updates.py
+          python -m unittest discover -s tests -p "test_community*.py"
+          python -m unittest discover -s tests -p "test_aircraft_photo_metadata.py"
 
       - name: Build with PyInstaller
         working-directory: gates/gate3
@@ -72,6 +81,10 @@ jobs:
             --hidden-import version `
             --hidden-import extensions `
             --hidden-import routes `
+            --hidden-import routes.community_photos `
+            --hidden-import utils.community_photo_client `
+            --hidden-import utils.aircraft_photo_metadata `
+            --hidden-import utils.photo_backup `
             --collect-all mariadb `
             --collect-all tzdata `
             --collect-data jaraco `

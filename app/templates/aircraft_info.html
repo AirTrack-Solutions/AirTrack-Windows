@@ -332,6 +332,7 @@
     <!-- Image carousel                                                       -->
     <!-- ------------------------------------------------------------------ -->
     <div class="aircraft-image">
+        {% if community_sharing_enabled %}<p><a href="{{ url_for('community_photos.share', aircraft_id=aircraft['AircraftID']) }}">Share one of my photos with the community</a></p>{% endif %}
         {% if aircraft['carousel_images'] %}
             {% if aircraft['image_count'] == 1 %}
                 {# Single image — no carousel needed #}
@@ -341,6 +342,7 @@
 </p>
 {% set img = aircraft['carousel_images'][0] %}
                 <img src="{{ img['url'] }}" alt="Aircraft Image" class="img-fluid mb-2">
+                {% include '_community_photo_credit.html' %}
                 <div class="image-counter">Image 1 of 1</div>
                 <form action="{{ url_for('aircraft.delete_image', aircraft_id=aircraft['AircraftID']) }}" method="POST" style="display:inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -365,6 +367,7 @@
                         {% for img in aircraft['carousel_images'] %}
                         <div class="carousel-item {% if loop.first %}active{% endif %}" data-image-index="{{ loop.index0 }}">
                             <img src="{{ img['url'] }}" class="d-block w-100" alt="Aircraft Image {{ img['image_number'] }}">
+                {% include '_community_photo_credit.html' %}
                         </div>
                         {% endfor %}
                     </div>

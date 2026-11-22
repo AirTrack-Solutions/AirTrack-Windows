@@ -1,0 +1,7 @@
+{% if community_sharing_enabled %}
+<fieldset class="mb-3 border rounded p-3"><legend style="font-size:1rem">Optional community sharing</legend>
+<label class="d-block"><input type="checkbox" name="own_photo" value="yes"> I took this photo myself, control its rights and confirm it contains no identifiable people.</label>
+<label class="d-block mt-2"><input type="checkbox" name="share_this_photo" value="yes"> Share this photo under CC BY 4.0, with photographer credit, after ATC review.</label>
+{% if community_auto_upload %}<p class="small mb-1">Automatic submissions are enabled: marking this as your own eligible photo queues it even if the second box is left unchecked.</p>{% endif %}
+<a href="{{ url_for('community_photos.settings') }}">Contribution conditions, licence and opt out</a></fieldset>
+{% endif %}

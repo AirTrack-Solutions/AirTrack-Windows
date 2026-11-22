@@ -1,0 +1,2 @@
+{% set community_credit = community_photo_credit(img['url']) %}
+{% if community_credit %}<p class="small">Photo: {{ community_credit.photographer }} · <a href="{{ community_credit.license_url }}" target="_blank" rel="noopener">{{ community_credit.license }}</a> · <a href="https://www.airtracksolutions.com/photos/{{ community_credit.id }}" target="_blank" rel="noopener">Source</a></p>{% endif %}
