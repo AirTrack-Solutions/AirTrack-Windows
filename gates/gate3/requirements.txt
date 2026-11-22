@@ -26,3 +26,4 @@ pywin32==311
 pyinstaller==6.3.0
 mariadb==1.1.14
 tzdata==2026.5
+Pillow==13.0.0

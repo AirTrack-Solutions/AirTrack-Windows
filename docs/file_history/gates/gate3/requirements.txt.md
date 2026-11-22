@@ -46,3 +46,5 @@ Verify the retried Windows installer build.
 - 2026-10-30 active-workspace integration: Apply only the tested dependency constraints to this existing checkout, preserving its other branch-specific requirements and unrelated edits. Canonical default-branch security changes are already published; existing installed binaries/images have not been rebuilt. Patched package and full-manifest resolver checks are documented above.
 
 - 2026-11-01: Integrated the already-published dependency repair from the remote branch rather than making a duplicate source fix. Retained local validation/provenance notes; branch-specific client pins preserved. This is repository reconciliation only, not a package/image/installer rollout. Recovery uses backup/pre-reconcile-20261101 and saved source snapshot.
+
+- 2026-11-22 before dependency fix: Windows44983057392 passed14updater checks but new photo tests failed becausePILmissing. Declare pinnedPillow13.0.0, already qualified in isolated sharing runtime. Add equivalent futureDocker/source dependency so native metadata/photo processing never relies on undeclared packages. No runtime pip install or oldstable overwrite.
