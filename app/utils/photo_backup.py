@@ -89,6 +89,8 @@ def _backup_photos(target, roots=None):
         for folder, directories, filenames in os.walk(root, onerror=fail):
             paths.extend(Path(folder) / name for name in directories + filenames)
         for path in sorted(paths):
+            if label == 'community' and path.parent == root and path.name in ('automation.lock','preferences.lock'):
+                continue  # Ephemeral synchronization bytes, not recoverable user data; Windows locks deny other-handle reads.
             if path.is_symlink():
                 raise RuntimeError('Symlink in photo backup source')
             if not path.is_file():

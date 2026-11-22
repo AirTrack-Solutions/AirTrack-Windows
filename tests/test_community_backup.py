@@ -13,6 +13,7 @@ class CommunityBackup(unittest.TestCase):
    first=m.backup_photos(backups/'first',{'published':published,'community':private})
    manifest=json.loads((backups/first['file']).read_text());record=manifest['files']['community/preferences.json']
    self.assertEqual(json.loads((backups/'photo_store'/record['sha256']).read_text()),{'enabled':True,'token':'fixture-only'})
+   self.assertNotIn('community/automation.lock',manifest['files']);self.assertNotIn('community/preferences.lock',manifest['files'])
    second=m.backup_photos(backups/'second',{'published':published,'community':private});self.assertEqual(second['new_or_changed'],0)
  def test_incomplete_photo_backup_cannot_look_like_complete_sql(self):
   with tempfile.TemporaryDirectory()as tmp,patch.dict(os.environ,{'AIRTRACK_HOME':tmp}):
