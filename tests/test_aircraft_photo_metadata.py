@@ -68,7 +68,7 @@ class SeparateEditRouteTests(unittest.TestCase):
                 c.executescript('CREATE TABLE airlines(AirlineID INTEGER,AirlineName TEXT,Ceased_Operations INTEGER); CREATE TABLE aircraft(AircraftID INTEGER,AirlineID INTEGER,Registration TEXT,FlightNumber TEXT,Aircraft_Type TEXT,MSN TEXT,Category TEXT,Country_of_Reg TEXT,Times_Seen INTEGER,Manufacture_Year INTEGER,Manufacture_Month INTEGER,ICAO_Address TEXT,Spotted_At TEXT,Notes TEXT,Departure TEXT,Arrival TEXT,Aircraft_Updated TEXT,Aircraft_Image TEXT); CREATE TABLE aircraft_images(AircraftID INTEGER,Filename TEXT);')
                 c.execute("INSERT INTO aircraft(AircraftID,Registration,ICAO_Address,Aircraft_Image)VALUES(1,'VH-ABC','7C1234','VH-ABC.jpg')");c.commit()
                 source=Path(__file__).resolve().parents[1]/'app/routes/edit_aircraft_routes.py'
-                nodes=[n for n in ast.parse(source.read_text()).body if isinstance(n,ast.FunctionDef)]
+                nodes=[n for n in ast.parse(source.read_text(encoding='utf-8')).body if isinstance(n,ast.FunctionDef)]
                 for n in nodes:n.decorator_list=[]
                 class Session:
                     def execute(self,sql,args=None):return c.execute(sql,{k:(v.isoformat() if isinstance(v,datetime) else v) for k,v in (args or{}).items()})

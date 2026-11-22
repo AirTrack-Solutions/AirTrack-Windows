@@ -22,16 +22,19 @@ PHOTO_ROOTS = {
 }
 
 
-def write_json(path, data):
-    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
-        temp = Path(output.name)
-        try:
-            output.write(json.dumps(data, sort_keys=True).encode())
+def write_json(path, value):
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    fd, name = tempfile.mkstemp(dir=path.parent)
+    temp = Path(name)
+    try:
+        with os.fdopen(fd, 'wb') as output:
+            output.write(json.dumps(value, sort_keys=True).encode())
             output.flush()
             os.fsync(output.fileno())
-            os.replace(temp, path)
-        finally:
-            temp.unlink(missing_ok=True)
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+
 
 
 @contextmanager
@@ -109,6 +112,7 @@ def _backup_photos(target, roots=None):
                             output.write(chunk)
                     output.flush()
                     os.fsync(output.fileno())
+                    output.close()  # Windows must release the temporary handle before publication/cleanup.
                     now = path.stat()
                     if fingerprint != [now.st_size, now.st_mtime_ns, now.st_ctime_ns]:
                         raise RuntimeError('Photo changed during backup; completed backups retained')
@@ -125,6 +129,7 @@ def _backup_photos(target, roots=None):
                     records[name] = dict(sha256=sha.hexdigest(), fingerprint=fingerprint)
                     copied += 1
                 finally:
+                    output.close()
                     temp.unlink(missing_ok=True)
     manifest = target.with_suffix('.photos.json')
     write_json(manifest, dict(store='photo_store', files=records,

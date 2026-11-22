@@ -47,15 +47,17 @@ def read_json(path, fallback):
 
 def write_json(path, value):
     path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-    with tempfile.NamedTemporaryFile(dir=path.parent, delete=False) as output:
-        temp = Path(output.name)
-        try:
+    fd, name = tempfile.mkstemp(dir=path.parent)
+    temp = Path(name)
+    try:
+        with os.fdopen(fd, 'wb') as output:
             output.write(json.dumps(value, sort_keys=True).encode())
             output.flush()
             os.fsync(output.fileno())
-            os.replace(temp, path)
-        finally:
-            temp.unlink(missing_ok=True)
+        os.replace(temp, path)
+    finally:
+        temp.unlink(missing_ok=True)
+
 
 
 def preferences():

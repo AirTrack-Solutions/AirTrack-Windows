@@ -38,10 +38,15 @@ jobs:
       - name: Verify updater contracts
         run: |
           python tests/test_windows_updates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/test_update_routes.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python tests/test_windows_auto_updates.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests -p "test_community*.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -m unittest discover -s tests -p "test_aircraft_photo_metadata.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Build with PyInstaller
         working-directory: gates/gate3
