@@ -79,7 +79,7 @@ def edit_aircraft(aircraft_id):
         if request.method == "POST":
 
             # ✅ DEBUG (now correctly placed)
-            print("✅ EDIT POST HIT:", dict(request.form))
+            logging.debug("Aircraft edit POST received")
 
             # ✅ Default to EDIT if button name is missing
             save_mode = request.form.get("save_mode", "edit")
