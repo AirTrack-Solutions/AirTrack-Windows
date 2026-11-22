@@ -348,13 +348,14 @@ def download_missing(app):
                 with tempfile.NamedTemporaryFile(dir=folder, delete=False) as out:
                     temp = Path(out.name)
                     try:
-                        out.write(data);out.flush();os.fsync(out.fileno());temp.chmod(0o644)
+                        out.write(data);out.flush();os.fsync(out.fileno());out.close();temp.chmod(0o644)
                         try:
                             os.link(temp, folder / name)
                             created = True
                         except FileExistsError:
                             continue
                     finally:
+                        out.close()
                         temp.unlink(missing_ok=True)
                 try:
                     known = credits()
