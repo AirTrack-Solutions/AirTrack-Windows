@@ -11,7 +11,8 @@ function Native([string]$File,[string[]]$Arguments) {
  if($LASTEXITCODE -ne 0){throw ('Required install step failed: '+[IO.Path]::GetFileName($File)+' (exit '+$LASTEXITCODE+')')}
 }
 function Protect([string]$Path) {
- Native 'icacls.exe' @($Path,'/inheritance:r','/grant:r','*S-1-5-18:(OI)(CI)F','*S-1-5-32-544:(OI)(CI)F')
+ $rights='F';if(Test-Path -LiteralPath $Path -PathType Container){$rights='(OI)(CI)F'}
+ Native 'icacls.exe' @($Path,'/inheritance:r','/grant:r',('*S-1-5-18:'+$rights),('*S-1-5-32-544:'+$rights))
 }
 function ReadIni([string]$Path) {
  $result=@{};$section=''
