@@ -52,6 +52,9 @@ jobs:
           python -m unittest discover -s tests -p "test_aircraft_photo_metadata.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+          python -m unittest discover -s tests -p "test_image_stats.py"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Build with PyInstaller
         working-directory: gates/gate3
         run: |
