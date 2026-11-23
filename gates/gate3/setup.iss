@@ -1,3 +1,7 @@
+#ifndef ReleaseVersion
+  #error ReleaseVersion is required. Run compile_installer.ps1.
+#endif
+
 ; AirTrack Windows Installer
 ; Gate 3 - full installer with per-customer config
 ;
@@ -11,7 +15,7 @@
 
 [Setup]
 AppName=AirTrack
-AppVersion=1.1.0
+AppVersion={#ReleaseVersion}
 DefaultDirName={code:InstallDirectory}
 UsePreviousAppDir=no
 DisableDirPage=yes
@@ -31,7 +35,7 @@ Source: "mariadb-11.4.12-winx64.msi"; DestDir: "{tmp}"; Flags: deleteafterinstal
 Source: "upgrade_guard.ps1"; Flags: dontcopy
 Source: "automatic_updates.ps1"; Flags: dontcopy
 
-Source: "wait_for_db.ps1"; DestDir: "{tmp}"; Flags: deleteafterinstall
+Source: "install_fresh.ps1"; Flags: dontcopy
 
 ; AirTrack schema - used on fresh installs only
 Source: "schema.sql"; DestDir: "{tmp}"; Flags: deleteafterinstall
@@ -44,33 +48,10 @@ Type: filesandordirs; Name: "{app}\_internal"; Check: IsUpgrade
 Type: files; Name: "{app}\AirTrack.exe"; Check: IsUpgrade
 
 [Run]
-; Step 1 - Install MariaDB silently (skipped if already present)
-Filename: "msiexec.exe"; Parameters: "/i ""{tmp}\mariadb-11.4.12-winx64.msi"" /quiet /norestart SERVICENAME=AirTrackDB PORT=3307 PASSWORD=AirTrackRoot2024! ALLOWREMOTEMACHINE=0 BUFFERPOOLSIZE=64 DATADIR=C:\AirTrackData\"; StatusMsg: "Installing MariaDB..."; Flags: waituntilterminated; Check: FreshMariaDBNotInstalled
-
-; Step 2 - Wait for MariaDB to accept connections
-Filename: "powershell.exe"; Parameters: "-ExecutionPolicy Bypass -NonInteractive -File ""{tmp}\wait_for_db.ps1"""; StatusMsg: "Waiting for database..."; Flags: waituntilterminated; Check: IsFresh
-
-; Step 3 - Init database (written dynamically by [Code] from sidecar airtrack.cfg)
-Filename: "cmd.exe"; Parameters: "/c ""{tmp}\init_db.bat"""; StatusMsg: "Initialising database..."; Flags: waituntilterminated; Check: IsFresh
-
-; Step 4 - Install AirTrack as Windows service
-Filename: "{app}\AirTrack.exe"; Parameters: "install"; StatusMsg: "Installing AirTrack service..."; Flags: waituntilterminated; Check: IsFresh
-
-; Step 5 - Service dependency: AirTrack waits for MariaDB on every boot
-Filename: "sc.exe"; Parameters: "config AirTrackClient depend= AirTrackDB"; StatusMsg: "Configuring service dependency..."; Flags: waituntilterminated; Check: IsFresh
-
-; Step 6 - Start AirTrack
-Filename: "{app}\AirTrack.exe"; Parameters: "start"; StatusMsg: "Starting AirTrack..."; Flags: waituntilterminated; Check: IsFresh
-
 ; Step 7 - Open browser (interactive installs only)
 Filename: "http://localhost:5000"; Flags: shellexec nowait postinstall skipifsilent; Description: "Open AirTrack in browser"
 
 [Code]
-const
-  MARIADB_ROOT_PASS = 'AirTrackRoot2024!';
-  MARIADB_BIN = 'C:\Program Files\MariaDB 11.4\bin\mysql.exe';
-  DQ = '"';
-
 var
   UpgradeInstall, UpgradePrepared, UpgradeFinished: Boolean;
   AppService, TransactionFile: String;
@@ -113,7 +94,7 @@ end;
 function RunGuard(Mode: String): Boolean;
 var Code: Integer; Params: String; Diagnostic: AnsiString;
 begin
-  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion 1.0.5 -StateFile "' + TransactionFile + '"';
+  Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\upgrade_guard.ps1') + '" -Mode ' + Mode + ' -InstallDir "' + ExpandConstant('{app}') + '" -ServiceName "' + AppService + '" -ExpectedVersion {#ReleaseVersion} -StateFile "' + TransactionFile + '"';
   Params := Params + ' -DiagnosticsPath "' + ExpandConstant('{tmp}\upgrade-guard.log') + '"';
   Log('Upgrade guard ' + Mode + ': ' + Params);
   if Mode = 'Finish' then Params := Params + ' -DeferRollback';
@@ -126,7 +107,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Home, Cfg: String;
 begin
   Result := '';
-  if ExpandConstant('{param:RELEASEVERSION|1.0.5}') <> '1.0.5' then
+  if ExpandConstant('{param:RELEASEVERSION|{#ReleaseVersion}}') <> '{#ReleaseVersion}' then
   begin
     Result := 'The signed release version does not match this installer. Nothing was changed.';
     Exit;
@@ -150,6 +131,8 @@ begin
     end
     else Result := 'AirTrack could not create a verified backup. Installation has been stopped. See the protected updates folder in the application data directory.';
   end
+  else if not FileExists(ExpandConstant('{src}\airtrack.cfg')) or not FileExists(ExpandConstant('{src}\license.lic')) then
+    Result := 'Extract the complete customer package first. Keep airtrack.cfg and license.lic beside AirTrackSetup.exe.'
   else if (AppService <> 'AirTrackClient') or FileExists(ExpandConstant('{app}\airtrack.cfg')) then
     Result := 'No matching service exists. This installation needs a manual review before replacement.';
 end;
@@ -161,64 +144,11 @@ begin
       MsgBox('Automatic recovery did not complete. Keep AirTrack stopped and use recover.ps1 in the protected update backup folder.', mbError, MB_OK);
 end;
 
-{ Skip MariaDB MSI install if already present }
-function FreshMariaDBNotInstalled: Boolean;
-begin
-  Result := IsFresh and (not FileExists(MARIADB_BIN));
-end;
-
 procedure CurStepChanged(CurStep: TSetupStep);
 var
-  CfgFile: String;
-  DbUser, DbPass, DbName, DbPort: String;
-  SqlContent, BatchContent: String;
-  SqlFile, BatchFile: String;
-  LicSrc, LicDest: String;
-  IsFreshInstall: Boolean;
+  LicSrc, LicDest, Params: String;
+  Code: Integer;
 begin
-  // ssInstall fires before files are copied - write helper scripts to {tmp}
-  if (CurStep = ssInstall) and IsFresh then
-  begin
-    CfgFile := ExpandConstant('{src}\airtrack.cfg');
-
-    { Read per-customer credentials from sidecar airtrack.cfg }
-    DbUser := GetIniString('database', 'user',     'airtrack', CfgFile);
-    DbPass := GetIniString('database', 'password', '',         CfgFile);
-    DbName := GetIniString('database', 'name',     'airtrack', CfgFile);
-    DbPort := GetIniString('database', 'port',     '3307',     CfgFile);
-
-    IsFreshInstall := not FileExists(ExpandConstant('{app}\airtrack.cfg'));
-
-    { Build idempotent DB + user creation SQL }
-    SqlContent :=
-      'CREATE DATABASE IF NOT EXISTS `' + DbName + '` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' + #13#10 +
-      'CREATE USER IF NOT EXISTS ''' + DbUser + '''@''127.0.0.1'' IDENTIFIED BY ''' + DbPass + ''';' + #13#10 +
-      'GRANT ALL PRIVILEGES ON `' + DbName + '`.* TO ''' + DbUser + '''@''127.0.0.1'';' + #13#10 +
-      'FLUSH PRIVILEGES;';
-
-    SqlFile := ExpandConstant('{tmp}\init_db.sql');
-    SaveStringToFile(SqlFile, SqlContent, False);
-
-    { Build init_db.bat using per-customer credentials }
-    BatchContent :=
-      '@echo off' + #13#10 +
-      DQ + MARIADB_BIN + DQ + ' --port=' + DbPort +
-        ' --host=127.0.0.1 --user=root --password=' + MARIADB_ROOT_PASS +
-        ' < ' + DQ + SqlFile + DQ + #13#10 +
-      'if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%' + #13#10;
-
-    { Only load schema on fresh installs - migrations handle upgrades }
-    if IsFreshInstall then
-      BatchContent := BatchContent +
-        DQ + MARIADB_BIN + DQ + ' --port=' + DbPort +
-          ' --host=127.0.0.1 --user=' + DbUser + ' --password=' + DbPass +
-          ' ' + DbName + ' < ' + DQ + ExpandConstant('{tmp}\schema.sql') + DQ + #13#10 +
-        'if %ERRORLEVEL% neq 0 exit /b %ERRORLEVEL%' + #13#10;
-
-    BatchFile := ExpandConstant('{tmp}\init_db.bat');
-    SaveStringToFile(BatchFile, BatchContent, False);
-  end;
-
   { Configure copied files before post-install service actions. }
   if CurStep = ssPostInstall then
   begin
@@ -257,6 +187,10 @@ begin
       ExpandConstant('{app}\_internal\app\core\package_installer.py'),
       'C:\ProgramData\AirTrack\core\package_installer.py', False
     );
+    ExtractTemporaryFile('install_fresh.ps1');
+    Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\install_fresh.ps1') + '" -InstallDir "' + ExpandConstant('{app}') + '" -MsiPath "' + ExpandConstant('{tmp}\mariadb-11.4.12-winx64.msi') + '" -SchemaPath "' + ExpandConstant('{tmp}\schema.sql') + '" -ExpectedVersion "{#ReleaseVersion}" -ServiceName "' + AppService + '"';
+    if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
+      RaiseException('Fresh installation failed its database/service readiness checks. Installation is not complete. Contact AirTrack before retrying.');
     RegisterAutomaticUpdates();
   end;
 end;

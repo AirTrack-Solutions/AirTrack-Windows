@@ -332,7 +332,7 @@
     <!-- Image carousel                                                       -->
     <!-- ------------------------------------------------------------------ -->
     <div class="aircraft-image">
-        {% if community_sharing_enabled %}<p><a href="{{ url_for('community_photos.share', aircraft_id=aircraft['AircraftID']) }}">Share one of my photos with the community</a></p>{% endif %}
+        {% if community_sharing_enabled and community_has_shareable_photo(aircraft) %}<p><a href="{{ url_for('community_photos.share', aircraft_id=aircraft['AircraftID']) }}">Share one of my photos with the community</a></p>{% endif %}
         {% if aircraft['carousel_images'] %}
             {% if aircraft['image_count'] == 1 %}
                 {# Single image — no carousel needed #}

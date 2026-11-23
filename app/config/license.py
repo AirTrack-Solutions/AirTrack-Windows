@@ -109,9 +109,16 @@ EDITION_FEATURES = {
 }
 
 
+# Canonical codes must match at every lookup boundary.
+EDITIONS = [code.casefold() for code in EDITIONS]
+EDITION_NAMES = {code.casefold(): value for code, value in EDITION_NAMES.items()}
+EDITION_ACTIVATIONS = {code.casefold(): value for code, value in EDITION_ACTIVATIONS.items()}
+EDITION_FEATURES = {code.casefold(): value for code, value in EDITION_FEATURES.items()}
+
+
 class AirTrackLicense:
     def __init__(self, edition='lite', license_id=None, name=None, issued=None):
-        self.edition      = edition.lower() if edition else 'lite'
+        self.edition      = str(edition).strip().casefold() if edition else 'lite'
         self.license_id   = license_id or 'UNLICENSED'
         self.name         = name or 'Unknown'
         self.issued       = issued or ''
@@ -155,7 +162,7 @@ def load_license() -> AirTrackLicense:
 
     try:
         data = json.loads(lic_path.read_text(encoding='utf-8'))
-        edition    = data.get('edition', 'lite')
+        edition    = str(data.get('edition', 'lite')).strip().casefold()
         license_id = data.get('license_id', 'UNKNOWN')
         name       = data.get('name', 'Unknown')
         issued     = data.get('issued', '')

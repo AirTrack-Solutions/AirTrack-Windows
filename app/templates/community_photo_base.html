@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block extra_styles %}{{ super() }}
+<style>
+.community-page{max-width:1000px;margin:24px auto;padding:24px;background:rgba(255,255,255,.97);color:#1b4f62;border:1px solid #c5d6dc;border-radius:12px;box-shadow:0 4px 12px #0002;font-size:18px}
+.community-page h1,.community-page h2,.community-page h3{color:inherit}.community-page a{color:#1b4f62}.community-page a:hover{color:#28718b}
+.community-page .card{color:inherit;border-color:#c5d6dc}.community-page .btn,.community-page button{background:#1b4f62;border:1px solid #1b4f62;border-radius:6px;color:white;padding:8px 14px;font:inherit}.community-page .btn:hover,.community-page button:hover{background:#286c80;color:white}.community-page button:disabled{opacity:.55}
+.community-page input:not([type=checkbox]),.community-page select{max-width:100%;padding:8px;border:1px solid #8baab7;border-radius:6px;background:white;color:#1b4f62}.community-page input[type=checkbox]{accent-color:#1b4f62}.community-page form{margin:16px 0}.community-page article{border-top:1px solid #c5d6dc;margin-top:20px;padding-top:20px}.community-page img{border-radius:8px;max-height:65vh;object-fit:contain}
+@media(max-width:600px){.community-page{padding:16px;margin:12px 0}}
+</style>{% endblock %}
+{% block content %}<section class="community-page">{% block community_content %}{% endblock %}</section>{% endblock %}

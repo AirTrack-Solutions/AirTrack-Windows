@@ -1,5 +1,7 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Community Photos — Settings</title><link rel="stylesheet" href="{{ url_for('static',filename='css/bootstrap.min.css') }}"><link rel="stylesheet" href="{{ url_for('static',filename='css/header.css') }}"></head><body style="background:#eef2f3;color:#163c49">
-{% include 'header.html' %}<main class="container py-4" style="max-width:1000px"><h1>Community Photos</h1>
+{% extends 'community_photo_base.html' %}
+{% block title %}Community Photos — Settings{% endblock %}
+{% block community_content %}
+<h1>Community Photos</h1>
 {% for category,message in get_flashed_messages(with_categories=true) %}<p role="status" class="alert alert-{{ category }}">{{ message }}</p>{% endfor %}
 <p>Opt in to contribute your own aircraft photographs. Library access unlocks after your first photograph is approved. {% if preferences.enabled and download_allowed %}<a href="{{ library_url }}">Browse the contributor library</a>.{% endif %}</p>
 <section class="card p-4 mb-3"><h2>Contribution conditions</h2><ul>
@@ -24,4 +26,5 @@
 </form>
 {% if preferences.enabled %}<section class="card p-4"><h2>Contributor access</h2><p>Status: <strong>{{ preferences.access_status|replace('_',' ') }}</strong>. New requests remain private until the operator confirms your identity/contact and enables uploads.</p><form method="post" action="{{ url_for('community_photos.check') }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn btn-outline-primary">Request / check contributor access</button></form>
 <h3 class="mt-4">Recent submissions from this installation</h3><ul>{% for job in jobs %}<li>{{ job.registration }} — {{ job.status|replace('_',' ') }}{% if job.error %}: {{ job.error }}{% endif %}</li>{% else %}<li>No photos have been queued.</li>{% endfor %}</ul></section>{% endif %}
-</main></body></html>
+
+{% endblock %}

@@ -21,6 +21,38 @@ def _record(aircraft_id):
     return dict(row), names
 
 
+def _shareable_photo(name):
+    """Pool provenance survives renames/sync in XMP; cached credit is hash-bound."""
+    if not name or Path(name).name != name:
+        return False
+    path = Path(current_app.static_folder) / 'uploads/aircraft' / name
+    if not path.is_file() or path.is_symlink():
+        return False
+    try:
+        from utils.aircraft_photo_metadata import jpeg_xmp, parse_xmp, NS
+        raw = path.read_bytes()
+        if raw.startswith(b'\xff\xd8'):
+            parsed = parse_xmp(jpeg_xmp(raw))
+        else:
+            from PIL import Image
+            with Image.open(path) as image:
+                parsed = parse_xmp(image.info.get('xmp', image.info.get('XML:com.adobe.xmp')))
+        if parsed is not None and parsed.find('.//{'+NS+'}PhotoID') is not None:
+            return False
+        saved = service.credits().get(name, {})
+        if saved.get('sha256'):
+            import hashlib
+            if hashlib.sha256(raw).hexdigest() == saved['sha256']:
+                return False
+        return True
+    except (OSError, ValueError):
+        return False
+
+
+def _has_shareable_photo(aircraft):
+    return any(_shareable_photo(photo.get('filename')) for photo in aircraft.get('carousel_images', []))
+
+
 def maybe_share_upload(aircraft_id, filename):
     p = service.preferences()
     chosen = request.form.get('share_this_photo') == 'yes'
@@ -95,6 +127,10 @@ def share(aircraft_id):
     aircraft, names = _record(aircraft_id)
     if not aircraft:
         return 'Aircraft not found', 404
+    names = [name for name in names if _shareable_photo(name)]
+    if not names:
+        flash('There are no original photos available to share. Community pool photos cannot be submitted again.', 'info')
+        return redirect(url_for('aircraft.aircraft_info', aircraft_id=aircraft_id))
     if request.method == 'POST':
         filename = request.form.get('filename', '')
         if filename not in names or request.form.get('own_photo') != 'yes':
@@ -232,7 +268,8 @@ def init_community_photos(app):
                     pass
             return None
         return dict(community_sharing_enabled=p['enabled'] and p['terms_version'] == service.TERMS_VERSION,
-                    community_auto_upload=p['auto_upload'], community_photo_credit=credit)
+                    community_auto_upload=p['auto_upload'], community_photo_credit=credit,
+                    community_has_shareable_photo=_has_shareable_photo)
     @app.before_request
     def community_check():
         if request.method == 'GET' and not request.path.startswith('/static/'):
