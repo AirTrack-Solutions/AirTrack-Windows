@@ -24,6 +24,8 @@ OutputBaseFilename=AirTrackSetup
 Compression=lzma
 SolidCompression=yes
 PrivilegesRequired=admin
+ArchitecturesAllowed=x64compatible
+ArchitecturesInstallIn64BitMode=x64compatible
 CreateUninstallRegKey=no
 Uninstallable=no
 
@@ -53,7 +55,7 @@ Filename: "http://localhost:5000"; Flags: shellexec nowait postinstall skipifsil
 
 [Code]
 var
-  UpgradeInstall, UpgradePrepared, UpgradeFinished: Boolean;
+  UpgradeInstall, UpgradePrepared, UpgradeFinished, FreshFailed: Boolean;
   AppService, TransactionFile: String;
 
 procedure RegisterAutomaticUpdates();
@@ -187,10 +189,18 @@ begin
       ExpandConstant('{app}\_internal\app\core\package_installer.py'),
       'C:\ProgramData\AirTrack\core\package_installer.py', False
     );
+    FreshFailed := True;
     ExtractTemporaryFile('install_fresh.ps1');
     Params := '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File "' + ExpandConstant('{tmp}\install_fresh.ps1') + '" -InstallDir "' + ExpandConstant('{app}') + '" -MsiPath "' + ExpandConstant('{tmp}\mariadb-11.4.12-winx64.msi') + '" -SchemaPath "' + ExpandConstant('{tmp}\schema.sql') + '" -ExpectedVersion "{#ReleaseVersion}" -ServiceName "' + AppService + '"';
     if not Exec(ExpandConstant('{sys}\WindowsPowerShell\v1.0\powershell.exe'), Params, '', SW_HIDE, ewWaitUntilTerminated, Code) or (Code <> 0) then
       RaiseException('Fresh installation failed its database/service readiness checks. Installation is not complete. Contact AirTrack before retrying.');
+    FreshFailed := False;
     RegisterAutomaticUpdates();
   end;
+end;
+
+function GetCustomSetupExitCode(): Integer;
+begin
+  Result := 0;
+  if FreshFailed or (UpgradePrepared and not UpgradeFinished) then Result := 1;
 end;

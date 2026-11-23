@@ -86,64 +86,34 @@ Always.
 | Component | Requirement |
 |:----------|:-------------|
 | OS | Windows 10 or Windows 11 (64-bit) |
-| Docker Desktop | Required — installer will prompt if not found |
+| Runtime | Native Windows services; Python and MariaDB are bundled |
 | RAM | 4GB minimum (8GB recommended) |
 | Storage | SSD recommended |
 | Browser | Chrome, Firefox, or Edge |
 
-> **Note:** Docker Desktop must be running before launching AirTrack.
+> Docker Desktop is not required by the native Windows installer.
 
 ---
 
 ## 🚀 Installation
 
-### Option A: Installer (Recommended)
+1. Download your personal AirTrack package from the link supplied by AirTrack Solutions.
+2. Extract the entire ZIP into a normal folder. Keep `AirTrackSetup.exe`, `airtrack.cfg` and `license.lic` together. Do not run the installer from inside the ZIP.
+3. Run `AirTrackSetup.exe` and accept the Windows administrator prompt.
+4. Wait for the installer to verify the database and application service. A reported error means installation is incomplete; keep the installer log for support.
+5. Open http://localhost:5000 on the same computer.
 
-1. Download the AirTrack Windows Installer (`AirTrack-Windows-Installer.exe`) from [airtracksolutions.com](https://airtracksolutions.com.au).
-2. Ensure **Docker Desktop** is installed and running.
-3. Right-click the installer and select **Run as Administrator**.
-4. Follow the prompts — AirTrack will install to:
-   ```
-   C:\Users\<you>\docker\AirTrack-Windows\
-   ```
-5. When installation completes, your browser will open automatically at:
-   ```
-   http://localhost:5000
-   ```
+A new installation uses `C:\AirTrack` for program files and `C:\ProgramData\AirTrack` for runtime data. The local MariaDB service uses port3307 and Logbook uses port5000. Existing installations retain their established program directory on upgrade.
 
-### Option B: Clone from GitHub
+A fresh Logbook starts without aircraft or photographs. Add your own records and photographs. Community Photos is optional and off by default; library access requires approved contributor access and an approved original photograph. Downloads match aircraft already in your database and do not overwrite existing photographs.
 
-For users comfortable with Docker and PowerShell.
-
-1. Ensure **Docker Desktop** is installed and running.
-2. Open PowerShell and clone the repository:
-   ```powershell
-   git clone https://github.com/Subhuti/AirTrack-Windows.git "%USERPROFILE%\docker\AirTrack-Windows"
-   cd "%USERPROFILE%\docker\AirTrack-Windows"
-   ```
-3. Run the setup script as Administrator:
-   ```powershell
-   powershell -ExecutionPolicy Bypass -NoProfile -File setup-airtrack.ps1
-   ```
-4. When setup completes, open your browser:
-   ```
-   http://localhost:5000
-   ```
-
-You are now flying with AirTrack! 🛫
-
----
+Keep your personal package private: it contains your licence and database credentials. Internet access is needed for optional online services and updates; local logging works without it. Do not copy the server's database or photographs into a tester installation.
 
 ## ▶️ Starting and Stopping
 
-| Action | How |
-|:-------|:----|
-| Start AirTrack | Double-click `start_airtrack.bat` |
-| Stop AirTrack | Double-click `stop.bat` |
+The native `AirTrackClient` and `AirTrackDB` Windows services start automatically. Open http://localhost:5000 to use Logbook. Use Windows Services to stop or start them; start the database before Logbook. A browser refresh does not restart either service.
 
-> Docker Desktop must be running before you start AirTrack.
-
----
+Developer source checkouts and Docker deployments are separate workflows and are not required for customer installation.
 
 ## 🧭 Supported Platforms
 
@@ -228,4 +198,4 @@ Clear skies and smooth landings.
 
 Developed by:
 **Samowal** — Devvista — http://devvista.org *(original PHP version)*
-**Trevor** — AirTrack Solutions — https://airtracksolutions.com.au *(current Python version)*
+**Trevor** — AirTrack Solutions — https://airtracksolutions.com *(current Python version)*

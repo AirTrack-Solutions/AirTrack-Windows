@@ -41,7 +41,8 @@ $dataHome=[IO.Path]::GetFullPath($dataHome);$data=Join-Path $dataHome 'database'
 if((Test-Path $data) -and (Get-ChildItem -LiteralPath $data -Force | Select-Object -First 1)){throw 'Existing database files found; fresh install will not overwrite them'}
 New-Item -ItemType Directory -Path $dataHome -Force|Out-Null
 Protect $dataHome
-$bin=Join-Path $env:ProgramFiles 'MariaDB 11.4\bin'
+$programFiles64=$env:ProgramW6432;if(-not $programFiles64){$programFiles64=$env:ProgramFiles}
+$bin=Join-Path $programFiles64 'MariaDB 11.4\bin'
 $random=New-Object byte[] 32;$rng=[Security.Cryptography.RandomNumberGenerator]::Create();$rng.GetBytes($random);$rng.Dispose()
 $rootPassword=[Convert]::ToBase64String($random).TrimEnd('=').Replace('+','-').Replace('/','_')
 $private=Join-Path $env:TEMP ('AirTrack-setup-'+[guid]::NewGuid().ToString('N'))
@@ -89,6 +90,9 @@ try {
  }
  if(-not $healthy){throw 'Logbook failed its version/database readiness check; installation is not complete'}
  Write-Output ('Fresh install verified: Logbook '+$ExpectedVersion+', local database ready')
+} catch {
+ [IO.File]::WriteAllText((Join-Path $dataHome 'fresh-install-error.txt'), $_.Exception.Message, $utf8)
+ throw
 } finally {
  $rootPassword=$null
  if(Test-Path $private){Remove-Item -LiteralPath $private -Recurse -Force}
