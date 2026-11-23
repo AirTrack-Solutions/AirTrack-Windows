@@ -141,7 +141,7 @@ def aircraft_table():
         if ac.get("Aircraft_Image"):
             ac["Image_URL"] = url_for(
                 "static",
-                filename=os.path.join(UPLOAD_SUBFOLDER, ac["Aircraft_Image"]),
+                filename="uploads/aircraft/" + ac["Aircraft_Image"],
             )
 
         aircraft_list.append(ac)
@@ -440,7 +440,7 @@ def aircraft_info(aircraft_id):
     if aircraft.get("Aircraft_Image"):
         carousel_images.append({
             "filename": aircraft["Aircraft_Image"],
-            "url": url_for("static", filename=os.path.join(UPLOAD_SUBFOLDER, aircraft["Aircraft_Image"])),
+            "url": url_for("static", filename="uploads/aircraft/" + aircraft["Aircraft_Image"]),
             "image_number": 1,
             "image_id": None,   # Primary image — deleted via existing delete_image route
         })
@@ -461,7 +461,7 @@ def aircraft_info(aircraft_id):
         for r in extra_rows:
             carousel_images.append({
                 "filename": r[1],
-                "url": url_for("static", filename=os.path.join(UPLOAD_SUBFOLDER, r[1])),
+                "url": url_for("static", filename="uploads/aircraft/" + r[1]),
                 "image_number": r[2],
                 "image_id": r[0],
             })
