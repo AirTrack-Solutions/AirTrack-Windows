@@ -14,6 +14,7 @@ import datetime
 import json
 
 import os
+import sys
 
 import tempfile
 
@@ -27,7 +28,14 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent.parent  # /app
 
-STATIC_DIR = Path(os.environ.get('AIRTRACK_STATIC_DIR', str(BASE_DIR / 'static'))).resolve()
+def _default_static_dir() -> Path:
+    # PyInstaller puts top-level utils beside app/, not inside it.
+    if getattr(sys, 'frozen', False) and getattr(sys, '_MEIPASS', None):
+        return Path(sys._MEIPASS) / 'app' / 'static'
+    return BASE_DIR / 'static'
+
+
+STATIC_DIR = Path(os.environ.get('AIRTRACK_STATIC_DIR', str(_default_static_dir()))).resolve()
 
 THEMES_DIR = STATIC_DIR / 'themes'
 
@@ -59,6 +67,8 @@ def _latest_theme_asset_mtime() -> int:
 
 
 def _outputs_mtime() -> int:
+    if not all(p.is_file() for p in (THEMES_JSON, THEMES_CSS)):
+        return 0
     mts = []
     for p in (THEMES_JSON, THEMES_CSS):
         if p.exists():
@@ -70,12 +80,23 @@ def _outputs_mtime() -> int:
     return min(mts) if mts else 0
 
 
+def _cache_is_current() -> bool:
+    try:
+        themes = json.loads(THEMES_JSON.read_text(encoding="utf-8"))
+        css = THEMES_CSS.read_text(encoding="utf-8")
+        return (isinstance(themes, list)
+                and any(isinstance(t, dict) and t.get('key') == 'vintage_brass' for t in themes)
+                and 'vintage-brass.css' in css)
+    except (OSError, ValueError):
+        return False
+
+
 def scan_if_stale() -> bool:
     """Regenerate themes.json/css if any asset is newer than our outputs."""
     try:
         latest_in = _latest_theme_asset_mtime()
         latest_out = _outputs_mtime()
-        if latest_out == 0 or latest_in > latest_out:
+        if latest_out == 0 or latest_in > latest_out or not _cache_is_current():
             scan_and_generate()
             return True
     except Exception:
@@ -149,6 +170,7 @@ def scan_and_generate() -> list[dict]:
                 and latest_in <= latest_out
                 and THEMES_JSON.exists()
                 and THEMES_CSS.exists()
+                and _cache_is_current()
             ):
                 return json.loads(THEMES_JSON.read_text(encoding="utf-8"))
 
