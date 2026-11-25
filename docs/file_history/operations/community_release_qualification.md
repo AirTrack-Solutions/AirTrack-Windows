@@ -1,6 +1,6 @@
 # Community release qualification
 Journal Revision: 1
-Last Updated: 2026-11-23
+Last Updated: 2026-11-25
 
 ## Current State
 Qualified 1.1.0 tester candidate is the Installer Workshop base. Fresh native Hayley installation and photo workflow passed; stable automatic-release feed remains 1.0.5. See final entry for exact artifact and limits.
@@ -12,3 +12,5 @@ Virgin OS/MSI-absent install, graphical wizard, full reboot and upgrade acceptan
 - 2026-11-22 before native test: userpowersHayley/Marianneon; use private new C:\Users\trevo\AirTrackTests\community-20261122 folder and existing isolated DBtest33317, never main service/database. Preserve prior test files; no real contributor/photo uploads. Test compiled app startup and default-off page, stop test processes afterwards.
 
 - 2026-11-23 final candidate qualification: source7043e7ea61df05419a707efb2464ae83387704df, successful CI45116801167. Exact installer175320364bytes SHA25671e22648bb956ad67755126c04ff716c34ff9e719e3757ba6ce6b2c7ea8c9d4d. Genuine Inno fresh application/database installation on Hayley, using existing MariaDB binaries and new instance, passed exit0, LocalSystem services, all8migrations, version1.1.0/database_ready. Deliberately invalid configuration returned exit1 and created no services. Native aircraft creation/photo upload/display and registration/MSNXMP passed. Sharing defaults off and no share link when opted out. Wombat publicHTTPS signed/hash-verified airport delivery imported85581rows and confirmed receipt. Original saved licence hash exactly retained; fixture removed, remainingaircraft0, restart remains healthy, automatic update task ready, DBloopbackonly. New Workshop base promoted; previous1.0.5base retained as AirTrackSetup.exe.bak_pre_tester_1.1.0_20261123. Stable automatic-release feed unchanged. No virgin Windows OS/MSI-absent installation, interactive wizard, full machine reboot or1.0.5->1.1.0upgrade acceptance claimed. No external tester package, email or real purchase generated. Further outside-user feedback remains necessary.
+
+- 2026-11-25 — Before build: Trevor asks choose unfinished task; selected updating Windows installer with completed Vintage Brass. Hayley online, existing AirTrackClient/AirTrackDB running. Scope source theme/Cockpit art/linkedpages and candidateversion1.1.1; preserve portableWindows updater/licence/DB. Plan CIbuild then native1.1.0→1.1.1upgrade acceptance with before/after data/config/licence checks. Do not change stable releasefeed or email customers. Prior qualified1.1.0base retained for recovery.

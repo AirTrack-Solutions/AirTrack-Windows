@@ -40,9 +40,23 @@
   // DOM refs
   let indicator = null;
 
+  function vintageSwitches() { return document.body.classList.contains('theme-vintage_brass'); }
+  function updateSwitchVisuals() {
+    if (!vintageSwitches()) return;
+    SWITCHES.forEach(sw => {
+      const zone = document.getElementById('zone-' + sw.id);
+      if (!zone) return;
+      const off = sw.bank === bank && sw.step <= progress;
+      zone.classList.toggle('is-off', off);
+      zone.setAttribute('aria-pressed', String(off));
+      zone.setAttribute('aria-label', 'Cockpit ' + sw.bank + sw.step + (off ? ' off' : ' on'));
+    });
+  }
+
   // ── Storage ──────────────────────────────────────────────────────────────
 
   function saveState() {
+    updateSwitchVisuals();
     try {
       localStorage.setItem(STORAGE.SECURED, String(secured));
       if (bank !== null) {
@@ -169,6 +183,20 @@
   function positionZone(sw) {
     const zone = document.getElementById('zone-' + sw.id);
     if (!zone) return;
+    if (vintageSwitches()) {
+      const col = (sw.step - 1) % 2;
+      const row = Math.floor((sw.step - 1) / 2);
+      const outer = document.querySelector?.(sw.bank === 'L' ? '.gauge-airlines' : '.gauge-airports');
+      const bounds = outer?.getBoundingClientRect();
+      const edge = window.innerWidth * (sw.bank === 'L' ? .08 : .92);
+      const gaugeEdge = bounds ? (sw.bank === 'L' ? bounds.left : bounds.right) : window.innerWidth * (sw.bank === 'L' ? .212 : .792);
+      const centre = (edge + gaugeEdge) / 2 / window.innerWidth * 100;
+      const x = centre + (col ? 1.5 : -1.5);
+      const y = 48 + row * 8;
+      zone.style.left = `calc(${x}% - 18px)`;
+      zone.style.top = `${y}%`; zone.style.width = '36px'; zone.style.height = '42px';
+      return;
+    }
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const scale = Math.max(vw / BASE_W, vh / BASE_H);
@@ -190,9 +218,10 @@
   function buildClickZones() {
     const wrap = document.createElement('div');
     wrap.className = 'cockpit-click-zones';
-    wrap.setAttribute('aria-hidden', 'true');
+    if (!vintageSwitches()) wrap.setAttribute('aria-hidden', 'true');
     SWITCHES.forEach(sw => {
-      const z = document.createElement('div');
+      const z = document.createElement(vintageSwitches() ? 'button' : 'div');
+      if (vintageSwitches()) { z.type = 'button'; z.dataset.label = sw.bank + sw.step; }
       z.id = 'zone-' + sw.id;
       z.className = 'cockpit-click-zone';
       z.addEventListener('click', () => handleSwitchClick(sw));
@@ -225,6 +254,7 @@
     buildClickZones();
     indicator = document.getElementById('radar-content');
     restoreState();
+    updateSwitchVisuals();
     window.addEventListener('resize', repositionAll, { passive: true });
   }
 

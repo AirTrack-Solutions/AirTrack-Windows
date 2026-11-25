@@ -1,8 +1,9 @@
 # File History: app/windows_release.json
 Journal Revision: 1
-Last Updated: 2026-11-22
+Last Updated: 2026-11-25
 
 ## Current State
+Candidate1.1.1 includes completed Vintage Brass; build/native upgrade qualification pending. Stable feed not changed.
 Released1.0.5: visible label is AirTrack Logbook1.0.5, with Release301/Wilbur removed; FULL_VERSION and SHORT_VERSION use the same installed semantic version. CI40452883616/source40cda52 and actual isolated/main Windows pages passed. Main signed SYSTEM4->5 returned0/statusinstalled5/database_ready;1aircraft,16settings,2files retained. Stable/candidate/Workshop artifact SHA2567b3701a3665a25dd7398b3601e9cb4511e612eecb0b6132c296e3a2ca5e84006,171897691bytes. Signed feed expires2026-11-26T05:07:28.235675Z; calendarID2 updated16:07AEDT.
 
 ## Known Issues
@@ -33,3 +34,5 @@ Increment this identity with each newly published application release.
 - 2026-11-22 before edit: Trevor authorises community sharing/downloadableLogbook. Port qualified native client feature with defaults-off/local consent, metadata/credit retention, own-db matches and ATC review. Preserve Windows native service/updater/Weather hooks. Candidate release1.1.0; build artifact first, no stable feed switch until qualification.
 
 - 2026-11-22 candidate source ready: default-off community settings/manual-sharing/own-DB reg+MSN+type+hex matching, fresh contributor approval gate, missing-only downloads, metadata and embedded credit/licence retention, portable local locks/private backup state. Explicit native source deltas retain updater/service/Weather. Twelve community and nine metadata tests pass in isolated153Python3.11/Pillow13 runtime (not a native Windows claim). Additional hidden imports and CI regressions added. Candidate1.1.0, stable feed/base installer remains1.0.5 until compiled qualification. Recover by reverting candidate source only; no Windows data changed.
+
+- 2026-11-25 — Trevor authorizes next unfinished task; bring Windows candidate to parity with completed158/162 VintageBrass. Increment candidate1.1.0→1.1.1 so installed1.1.0upgrade distinguishable. Keep stablefeed unchanged. Build/nativeupgrade qualification to be recorded after verification; no release claim yet. Recovery retain qualified1.1.0installer and native transaction backups.
