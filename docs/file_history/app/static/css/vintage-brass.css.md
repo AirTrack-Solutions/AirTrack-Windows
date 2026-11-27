@@ -4,7 +4,7 @@ Last Updated: 2026-11-27
 
 ## Current State
 
-Hayley serves the Vintage Brass HUD label wrap fix, verified by served hash and Chromium layout checks. The 1.1.2 installer still needs a rebuild to include it.
+Hayley uses the original Vintage Brass button geometry and the shorter Windows Cockpit labels. The existing installer predates the label change.
 
 Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 Windows1.1.1 corrected candidate4911e1a is built, native-upgrade qualified and available as Workshopbase; stablefeed unchanged. Latest qualification below.
@@ -77,3 +77,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-27 — Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 
 - 2026-11-27 — Trevor reported Vintage Brass HUD labels extending beyond their buttons on Hayley, including Manual Aircraft Entry, Launch Bug Tracker and Application Updates. On viewports up to 1536 px, preserve the 13 px label size and tapered widths, reserve 30 px button height and allow full labels to wrap. The 26 px wide-desktop layout remains. Chromium fixture widths 768, 1024, 1280, 1366, 1536 and 1920 verified equal button heights, no label overflow and both banks entirely in view. Atomically replaced only the installed CSS on Hayley after checking the prior hash. Verified served SHA-256 58d0459c5e515024ea00e08d2d034e055713676c2e5cf04b0aa5ed06a6a4d09c and healthy 1.1.2. No restart. Laptop visual acceptance pending. Original installer does not contain this hotfix. Restore the saved CSS in C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/vintage-brass-before-hud.css and hard refresh to recover.
+
+- 2026-11-27 — Trevor requested rolling back the wrapping/height change after the right HUD covered the switches. Restored the pre-hotfix Vintage Brass stylesheet byte-for-byte on Hayley and replaced only the Windows Cockpit labels with Manual Entry, Bug Tracker and Updates. Existing button routes and actions are intact. Verified Jinja parsing, installed template labels and restored served CSS SHA-256 6ac9ffcfd694f807bceee92a4c495973584d019b95ca484a3e8576eb0bf8d4ec; restarted only AirTrackClient and confirmed 1.1.2/database_ready. No visual check in the laptop browser. The base installer predates the label change. Rollback files are admin-before-short-labels.html and vintage-brass-before-label-revert.css under C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127.

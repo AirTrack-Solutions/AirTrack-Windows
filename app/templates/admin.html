@@ -183,11 +183,11 @@
     <button class="cockpit-hud-button"
         onclick="window.location.href='/admin/manual_aircraft';"
         title="Do some of the work for yourself, add an aircraft manually.">
-      Manual Aircraft Entry
+      Manual Entry
     </button>
-    <a href="http://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Launch Bug Tracker</button></a>
+    <a href="http://bugs.airtracksolutions.com" target="_blank"><button type="button" class="cockpit-hud-button">Bug Tracker</button></a>
     {% if endpoint_exists('updates.updates_page') %}
-    <a href="{{ url_for('updates.updates_page') }}"><button type="button" class="cockpit-hud-button">Application Updates</button></a>
+    <a href="{{ url_for('updates.updates_page') }}"><button type="button" class="cockpit-hud-button">Updates</button></a>
     {% endif %}
     <button class="cockpit-hud-button" onclick="openSettings()">Settings</button>
     <button class="cockpit-hud-button" onclick="openMunicipalityModal()" title="Set city name for an airport">Set Municipality</button>
