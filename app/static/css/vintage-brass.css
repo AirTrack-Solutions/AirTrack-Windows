@@ -394,7 +394,7 @@ body.theme-vintage_brass .gauge-airports {left:79.2% !important;transform:transl
 body.theme-vintage_brass #cockpit-center-display {height:32px;box-sizing:border-box;}
 body.theme-vintage_brass .gauge {
  width:61px;height:61px;box-sizing:border-box;
- top:calc(53% - 16.5px) !important;
+ top:calc(53% - 18.5px) !important;
 }
 body.theme-vintage_brass .gauge-label {bottom:calc(1vh - 26.5px);}
 
