@@ -295,6 +295,13 @@ body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(11) {transform:no
 body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(12) {transform:none;width:calc(82.4% - .65vw);}
 body.theme-vintage_brass .cockpit-hud-button {height:26px;min-height:26px;font-size:13px;white-space:nowrap;}
 
+/* Keep the Windows HUD stack inside the brass panel on short viewports. */
+@media (max-height: 760px) {
+  body.theme-vintage_brass .cockpit-hud-column {
+    gap: 2px;
+  }
+}
+
 /* Match the approved inner clearance on the outer panel edge as well. */
 body.theme-vintage_brass .hud-left > :is(a,form,button) {margin-left:.65vw;}
 body.theme-vintage_brass .hud-right > :is(a,form,button) {margin-right:.65vw;}
