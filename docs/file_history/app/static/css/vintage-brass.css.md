@@ -1,8 +1,10 @@
 # File History: app/static/css/vintage-brass.css
 Journal Revision: 1
-Last Updated: 2026-11-27
+Last Updated: 2026-11-28
 
 ## Current State
+
+Hayley Vintage Brass switch rows are 4 px higher with labels beside their switches.
 
 Hayley uses the Export 4 Mobile label and an 8 px inner inset on short Vintage Brass viewports.
 
@@ -85,3 +87,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-27 — Trevor said the seven-left/nine-right Windows HUD did not fit the artwork panels as closely as .158. Read-only comparison found byte-identical Vintage CSS and cockpit art. In the Windows stylesheet reduce only the vertical gaps from 6 px to 2 px at viewport heights up to 760 px. Keep the existing 26 px height, 13 px font and shorter labels. Chromium fixture's six windows showed no text overflow, both banks inside the viewport, and clearance above the right switches at all six window sizes. At representative 1239 × 657, clearance from the switch label safety line changed from -13 to +19 px. Hayley served verified SHA-256 f329939342782438615d9f7cd39b8602f126e91fa7c50655cc14540c4cc2dd8a without restart. No direct laptop-browser visual check. The existing installer predates this change. Recovery: restore C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/vintage-brass-before-panel-fit.css and hard-refresh.
 
 - 2026-11-27 — Trevor marked the brass panels’ inner edges and requested Export 4 Mobile. On short Windows Vintage Brass viewports, inset the inner button edges by another 8 CSS px and set 3 px horizontal padding. Preserve outer alignment, eight-per-bank layout, 26 px height and 13 px text, and the mobile export form action. Jinja parse and six Chromium fixture viewport checks passed, including no overflow and 47 px of right-switch clearance at 1239 × 657. Installed files hash-verified, served CSS SHA-256 86d41ed6f1156f5ecdab6d0cf3d2051f9f3e30cdac6bc73e6419fee22230e062, AirTrackClient restarted and returned version 1.1.2/database_ready. Laptop visual check and installer rebuild pending. Roll back admin-before-export4.html and vintage-brass-before-inset.css from the protected Hayley verification folder, then restart AirTrackClient.
+
+- 2026-11-28 — Trevor requested side labels and a small lift after the lower switch labels appeared over the upper switch row at 1280 × 720. Lifted Vintage Brass Windows click targets and levers together by 4 px. Side labels sit outside each pair; inward labels sit beside their levers on the plates through 900 px to clear gauge text. No event handler or switch sequence change. Chromium geometry fixture passed six viewport sizes including 1243 × 594 (supplied image dimensions), 1280 × 720 and 768 × 1024, checking switch and label overlap with HUD buttons and nearby gauges and gauge text. Guarded CSS-only Hayley replacement served SHA-256 126f384764ca823269ac0f6ff9eeab815f7de3771616a1086416499713940431; no restart. Laptop visual acceptance and installer rebuild pending. Recover by restoring vintage-brass-before-switch-labels.css from the protected Hayley verification directory and hard refreshing.
