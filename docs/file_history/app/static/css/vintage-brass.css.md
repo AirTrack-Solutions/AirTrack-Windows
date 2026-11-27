@@ -4,7 +4,7 @@ Last Updated: 2026-11-28
 
 ## Current State
 
-Hayley Vintage Brass switch rows are 4 px higher with labels beside their switches. The gauges and their labels sit 2 px higher.
+Hayley Vintage Brass switch rows are 6 px higher with labels beside their switches. The gauges and their labels sit 2 px higher.
 
 Hayley uses the Export 4 Mobile label and an 8 px inner inset on short Vintage Brass viewports.
 
@@ -91,3 +91,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-28 — Trevor requested side labels and a small lift after the lower switch labels appeared over the upper switch row at 1280 × 720. Lifted Vintage Brass Windows click targets and levers together by 4 px. Side labels sit outside each pair; inward labels sit beside their levers on the plates through 900 px to clear gauge text. No event handler or switch sequence change. Chromium geometry fixture passed six viewport sizes including 1243 × 594 (supplied image dimensions), 1280 × 720 and 768 × 1024, checking switch and label overlap with HUD buttons and nearby gauges and gauge text. Guarded CSS-only Hayley replacement served SHA-256 126f384764ca823269ac0f6ff9eeab815f7de3771616a1086416499713940431; no restart. Laptop visual acceptance and installer rebuild pending. Recover by restoring vintage-brass-before-switch-labels.css from the protected Hayley verification directory and hard refreshing.
 
 - 2026-11-28 — Raised the eight Windows Vintage Brass gauges and their attached labels together by 2 CSS px as requested. Chromium fixture checked switch, label and nearby gauge clearance at six viewport sizes. Guarded CSS-only Hayley replacement served SHA-256 88d79366a94813320979a4626752b2a3b4f985e997519ddfc052f31976bb0b75. Laptop visual check and installer rebuild pending. Restore vintage-brass-before-gauge-lift.css from the protected Hayley verification directory to recover.
+
+- 2026-11-28 — Lifted both Vintage Brass switch rows by another 2 CSS px, moving the levers, labels and hit targets together. The gauge lift stays in place. Six viewport fixtures passed switch, label, HUD and nearby gauge clearance checks. Hayley served the guarded CSS replacement with SHA-256 1570ed2c928bd24c6806bf0f518da0eb559aaa31e92954535e3c938cd4b69038 without a restart. Laptop visual check and installer rebuild remain pending. Restore vintage-brass-before-second-switch-lift.css from the protected Hayley verification folder to recover.
