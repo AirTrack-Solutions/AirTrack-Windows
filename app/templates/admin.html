@@ -154,6 +154,10 @@
         <button class="cockpit-hud-button">Restore Backup</button>
       </form>
 
+      {% if not is_server %}
+      <button type="button" class="cockpit-hud-button" onclick="openCleanupModal()" title="Remove old backups, exports and rotate logs.">Clean Up</button>
+      {% endif %}
+
       <a href="https://discord.gg/NsmUxZmuY" target="_blank"><button type="button" class="cockpit-hud-button">Discord</button></a>
       {% if aria_enabled %}<button type="button" class="cockpit-hud-button" onclick="if(window.ariaTogglePanel) window.ariaTogglePanel()">Aria</button>{% endif %}
     </div>
@@ -194,8 +198,6 @@
 
     {% if is_server and show_commit_push %}
     <button class="cockpit-hud-button" onclick="openGit()">Git / Updates</button>
-    {% elif not is_server %}
-    <button type="button" class="cockpit-hud-button" onclick="openCleanupModal()" title="Remove old backups, exports and rotate logs.">Clean Up</button>
     {% endif %}
   </div>
 

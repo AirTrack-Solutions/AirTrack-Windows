@@ -4,6 +4,8 @@ Last Updated: 2026-11-27
 
 ## Current State
 
+Hayley uses balanced Windows HUD button banks, with Clean Up on the left. The existing installer predates the change.
+
 Hayley uses shorter Windows Cockpit labels and closer Vintage Brass button spacing on short viewports. The existing installer predates these changes.
 
 Windows 1.1.2 from 5d4345c passed a guarded native upgrade on Hayley and is available as a distribution artifact. The .158 production
@@ -55,3 +57,5 @@ user-selectable data text size to V2.
 - 2026-11-27 — Trevor requested rolling back the wrapping/height change after the right HUD covered the switches. Restored the pre-hotfix Vintage Brass stylesheet byte-for-byte on Hayley and replaced only the Windows Cockpit labels with Manual Entry, Bug Tracker and Updates. Existing button routes and actions are intact. Verified Jinja parsing, installed template labels and restored served CSS SHA-256 6ac9ffcfd694f807bceee92a4c495973584d019b95ca484a3e8576eb0bf8d4ec; restarted only AirTrackClient and confirmed 1.1.2/database_ready. No visual check in the laptop browser. The base installer predates the label change. Rollback files are admin-before-short-labels.html and vintage-brass-before-label-revert.css under C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127.
 
 - 2026-11-27 — Trevor said the seven-left/nine-right Windows HUD did not fit the artwork panels as closely as .158. Read-only comparison found byte-identical Vintage CSS and cockpit art. In the Windows stylesheet reduce only the vertical gaps from 6 px to 2 px at viewport heights up to 760 px. Keep the existing 26 px height, 13 px font and shorter labels. Chromium fixture's six windows showed no text overflow, both banks inside the viewport, and clearance above the right switches at all six window sizes. At representative 1239 × 657, clearance from the switch label safety line changed from -13 to +19 px. Hayley served verified SHA-256 f329939342782438615d9f7cd39b8602f126e91fa7c50655cc14540c4cc2dd8a without restart. No direct laptop-browser visual check. The existing installer predates this change. Recovery: restore C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/vintage-brass-before-panel-fit.css and hard-refresh.
+
+- 2026-11-27 — Trevor requested balanced HUD banks on Hayley. Move the existing client-only Clean Up button beside the backup controls in the left bank. Verified the Windows template renders eight left and seven static right buttons, plus the runtime Shut Down button for the observed eight-right configuration. The server conditional and existing Clean Up handler are intact. Replaced the installed template with a hash guard, restarted AirTrackClient, and verified 1.1.2/database_ready. Browser visual layout remains to be checked on Hayley. Restore C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/admin-before-hud-balance.html and restart AirTrackClient to recover. The existing installer predates the change.

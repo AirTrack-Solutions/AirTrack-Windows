@@ -4,6 +4,8 @@ Last Updated: 2026-11-27
 
 ## Current State
 
+Hayley uses balanced Windows HUD button banks, with Clean Up on the left. The existing installer predates the change.
+
 Hayley uses the original Vintage Brass button geometry and the shorter Windows Cockpit labels. The existing installer predates the label change.
 
 Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
@@ -33,3 +35,5 @@ Consider full isolated installer/service-mode regression before broad distributi
 - 2026-11-27 — Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 
 - 2026-11-27 — Trevor requested rolling back the wrapping/height change after the right HUD covered the switches. Restored the pre-hotfix Vintage Brass stylesheet byte-for-byte on Hayley and replaced only the Windows Cockpit labels with Manual Entry, Bug Tracker and Updates. Existing button routes and actions are intact. Verified Jinja parsing, installed template labels and restored served CSS SHA-256 6ac9ffcfd694f807bceee92a4c495973584d019b95ca484a3e8576eb0bf8d4ec; restarted only AirTrackClient and confirmed 1.1.2/database_ready. No visual check in the laptop browser. The base installer predates the label change. Rollback files are admin-before-short-labels.html and vintage-brass-before-label-revert.css under C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127.
+
+- 2026-11-27 — Trevor requested balanced HUD banks on Hayley. Move the existing client-only Clean Up button beside the backup controls in the left bank. Verified the Windows template renders eight left and seven static right buttons, plus the runtime Shut Down button for the observed eight-right configuration. The server conditional and existing Clean Up handler are intact. Replaced the installed template with a hash guard, restarted AirTrackClient, and verified 1.1.2/database_ready. Browser visual layout remains to be checked on Hayley. Restore C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/admin-before-hud-balance.html and restart AirTrackClient to recover. The existing installer predates the change.
