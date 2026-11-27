@@ -4,7 +4,7 @@ Last Updated: 2026-11-28
 
 ## Current State
 
-Windows 1.1.3 is the installer candidate for the approved Hayley Cockpit layout.
+Windows 1.1.3 is packaged and build-verified with the approved Hayley Cockpit layout.
 
 Hayley Vintage Brass switch rows are 6 px higher with labels beside their switches. The gauges and their labels sit 4 px higher.
 
@@ -77,3 +77,5 @@ user-selectable data text size to V2.
 - 2026-11-28 — Raised the eight Windows Vintage Brass gauges and attached labels another 2 CSS px. Six Chromium fixtures passed nearby gauge, switch and HUD clearance checks. Guarded CSS-only replacement on Hayley served SHA-256 e379c4485b81a6ae79352daad036b2af0d0038fa7faa7418cbd58fad60a01f3f without restart. Direct visual acceptance and installer rebuild pending. Restore vintage-brass-before-second-gauge-lift.css from the protected Hayley verification folder to recover.
 
 - 2026-11-28 — Trevor approved the final Hayley layout and requested packaging. Advance the Windows installer identity to 1.1.3 so it can be distinguished from the original 1.1.2 installer. The approved layout is in 6a5a766. Build and artifact verification pending. Retain the previous installer for recovery.
+
+- 2026-11-28 — Windows 1.1.3 packaging completed from b9a4a9b96afeba8c2c59c7334e7d0d0166d62c25. GitHub Actions 46004365508 passed updater contract tests, compiled the app, verified the pinned MariaDB MSI and built the Inno installer. Verified both artifact ZIP digests and Windows release metadata, templates, styles, tooltip/shutdown scripts and artwork against source. The Cockpit template and Vintage Brass CSS match the approved files on Hayley. Installer 181483706 bytes, SHA-256 fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff. No native 1.1.3 install, Workshop promotion or stable feed update. Keep the previous qualified installer and Hayley rollback files. Distribution artifact: /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.3.exe.
