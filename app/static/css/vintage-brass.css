@@ -281,24 +281,29 @@ body.theme-vintage_brass .cockpit-hud-button {
 /* Fit panel edges by width only: constant text size and button height. */
 body.theme-vintage_brass .hud-left > * {align-self:flex-start;}
 body.theme-vintage_brass .hud-right > * {align-self:flex-end;}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(1) {transform:none;width:calc(100.0% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(2) {transform:none;width:calc(98.4% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(3) {transform:none;width:calc(96.8% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(4) {transform:none;width:calc(95.2% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(5) {transform:none;width:calc(93.6% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(6) {transform:none;width:calc(92.0% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(7) {transform:none;width:calc(90.4% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(8) {transform:none;width:calc(88.8% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(9) {transform:none;width:calc(87.2% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(10) {transform:none;width:calc(85.6% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(11) {transform:none;width:calc(84.0% - .65vw);}
-body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(12) {transform:none;width:calc(82.4% - .65vw);}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(1) {transform:none;width:calc(100.0% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(2) {transform:none;width:calc(98.4% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(3) {transform:none;width:calc(96.8% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(4) {transform:none;width:calc(95.2% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(5) {transform:none;width:calc(93.6% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(6) {transform:none;width:calc(92.0% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(7) {transform:none;width:calc(90.4% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(8) {transform:none;width:calc(88.8% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(9) {transform:none;width:calc(87.2% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(10) {transform:none;width:calc(85.6% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(11) {transform:none;width:calc(84.0% - var(--hud-inner-inset, .65vw));}
+body.theme-vintage_brass .cockpit-hud-column > :nth-last-child(12) {transform:none;width:calc(82.4% - var(--hud-inner-inset, .65vw));}
 body.theme-vintage_brass .cockpit-hud-button {height:26px;min-height:26px;font-size:13px;white-space:nowrap;}
 
 /* Keep the Windows HUD stack inside the brass panel on short viewports. */
 @media (max-height: 760px) {
   body.theme-vintage_brass .cockpit-hud-column {
     gap: 2px;
+    --hud-inner-inset: calc(.65vw + 8px);
+  }
+
+  body.theme-vintage_brass .cockpit-hud-button {
+    padding-inline: 3px;
   }
 }
 
