@@ -4,7 +4,7 @@ Last Updated: 2026-11-27
 
 ## Current State
 
-Windows 1.1.2 was built from 5d4345c and is available as a distribution artifact. The .158 production
+Windows 1.1.2 from 5d4345c passed a guarded native upgrade on Hayley and is available as a distribution artifact. The .158 production
 browser sign-off accepted the live Chromium hover coverage gap and deferred
 user-selectable data text size to V2.
 
@@ -32,3 +32,18 @@ user-selectable data text size to V2.
   No native 1.1.2 upgrade or fresh installation was verified. Stable feed
   and Workshop base stayed on their previous versions. Retain 1.1.1
   and its qualified recovery artifacts for rollback.
+
+- 2026-11-27 — Trevor authorized the native upgrade after seeing Vintage
+  Brass on Hayley's 1.1.1 install. Confirmed installer SHA-256 before and after
+  transfer, captured protected before/after SQL data snapshots and config and
+  licence hashes, then ran Inno in upgrade mode with no reboot. Exit 0;
+  transaction completed and HTTP health reports 1.1.2/database_ready.
+  All 78 table counts and the complete data snapshot, config and licence
+  hashes match across upgrade. Eight served CSS, JS and artwork files match
+  1.1.2 source. The actual theme picker refresh retains Vintage Brass and
+  Default and the generated CSS imports Vintage Brass. Visual layout in
+  Trevor's laptop browser has not been checked. Workshop and stable feed
+  were not promoted. Recovery transaction backup on Hayley:
+  C:\ProgramData\AirTrack\updates\backups\1514b7613504474387b2be3d6b5e821b.
+  Protected verification files are in
+  C:\Users\trevo\AirTrackTests\vintage-1.1.2-20261127.
