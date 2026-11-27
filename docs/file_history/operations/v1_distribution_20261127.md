@@ -4,6 +4,8 @@ Last Updated: 2026-11-27
 
 ## Current State
 
+Hayley serves the Vintage Brass HUD label wrap fix, verified by served hash and Chromium layout checks. The 1.1.2 installer still needs a rebuild to include it.
+
 Windows 1.1.2 from 5d4345c passed a guarded native upgrade on Hayley and is available as a distribution artifact. The .158 production
 browser sign-off accepted the live Chromium hover coverage gap and deferred
 user-selectable data text size to V2.
@@ -47,3 +49,5 @@ user-selectable data text size to V2.
   C:\ProgramData\AirTrack\updates\backups\1514b7613504474387b2be3d6b5e821b.
   Protected verification files are in
   C:\Users\trevo\AirTrackTests\vintage-1.1.2-20261127.
+
+- 2026-11-27 — Trevor reported Vintage Brass HUD labels extending beyond their buttons on Hayley, including Manual Aircraft Entry, Launch Bug Tracker and Application Updates. On viewports up to 1536 px, preserve the 13 px label size and tapered widths, reserve 30 px button height and allow full labels to wrap. The 26 px wide-desktop layout remains. Chromium fixture widths 768, 1024, 1280, 1366, 1536 and 1920 verified equal button heights, no label overflow and both banks entirely in view. Atomically replaced only the installed CSS on Hayley after checking the prior hash. Verified served SHA-256 58d0459c5e515024ea00e08d2d034e055713676c2e5cf04b0aa5ed06a6a4d09c and healthy 1.1.2. No restart. Laptop visual acceptance pending. Original installer does not contain this hotfix. Restore the saved CSS in C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/vintage-brass-before-hud.css and hard refresh to recover.
