@@ -1,8 +1,10 @@
 # File History: app/windows_release.json
 Journal Revision: 1
-Last Updated: 2026-11-27
+Last Updated: 2026-11-28
 
 ## Current State
+
+Windows 1.1.3 is the installer candidate for the approved Hayley Cockpit layout.
 
 Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 Windows1.1.1 corrected candidate4911e1a is built, native-upgrade qualified and available as Workshopbase; stablefeed unchanged. Latest qualification below.
@@ -48,3 +50,5 @@ Increment this identity with each newly published application release.
   responsive changes. CI 45954530989 passed and the version bundled with
   the compiled application was verified. Installer qualification and
   recovery details are in the V1 distribution journal.
+
+- 2026-11-28 — Trevor approved the final Hayley layout and requested packaging. Advance the Windows installer identity to 1.1.3 so it can be distinguished from the original 1.1.2 installer. The approved layout is in 6a5a766. Build and artifact verification pending. Retain the previous installer for recovery.
