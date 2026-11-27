@@ -4,7 +4,7 @@ Last Updated: 2026-11-28
 
 ## Current State
 
-Hayley Vintage Brass switch rows are 4 px higher with labels beside their switches.
+Hayley Vintage Brass switch rows are 4 px higher with labels beside their switches. The gauges and their labels sit 2 px higher.
 
 Hayley uses the Export 4 Mobile label and an 8 px inner inset on short Vintage Brass viewports.
 
@@ -67,3 +67,5 @@ user-selectable data text size to V2.
 - 2026-11-27 — Trevor marked the brass panels’ inner edges and requested Export 4 Mobile. On short Windows Vintage Brass viewports, inset the inner button edges by another 8 CSS px and set 3 px horizontal padding. Preserve outer alignment, eight-per-bank layout, 26 px height and 13 px text, and the mobile export form action. Jinja parse and six Chromium fixture viewport checks passed, including no overflow and 47 px of right-switch clearance at 1239 × 657. Installed files hash-verified, served CSS SHA-256 86d41ed6f1156f5ecdab6d0cf3d2051f9f3e30cdac6bc73e6419fee22230e062, AirTrackClient restarted and returned version 1.1.2/database_ready. Laptop visual check and installer rebuild pending. Roll back admin-before-export4.html and vintage-brass-before-inset.css from the protected Hayley verification folder, then restart AirTrackClient.
 
 - 2026-11-28 — Trevor requested side labels and a small lift after the lower switch labels appeared over the upper switch row at 1280 × 720. Lifted Vintage Brass Windows click targets and levers together by 4 px. Side labels sit outside each pair; inward labels sit beside their levers on the plates through 900 px to clear gauge text. No event handler or switch sequence change. Chromium geometry fixture passed six viewport sizes including 1243 × 594 (supplied image dimensions), 1280 × 720 and 768 × 1024, checking switch and label overlap with HUD buttons and nearby gauges and gauge text. Guarded CSS-only Hayley replacement served SHA-256 126f384764ca823269ac0f6ff9eeab815f7de3771616a1086416499713940431; no restart. Laptop visual acceptance and installer rebuild pending. Recover by restoring vintage-brass-before-switch-labels.css from the protected Hayley verification directory and hard refreshing.
+
+- 2026-11-28 — Raised the eight Windows Vintage Brass gauges and their attached labels together by 2 CSS px as requested. Chromium fixture checked switch, label and nearby gauge clearance at six viewport sizes. Guarded CSS-only Hayley replacement served SHA-256 88d79366a94813320979a4626752b2a3b4f985e997519ddfc052f31976bb0b75. Laptop visual check and installer rebuild pending. Restore vintage-brass-before-gauge-lift.css from the protected Hayley verification directory to recover.
