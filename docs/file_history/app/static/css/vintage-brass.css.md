@@ -1,8 +1,10 @@
 # File History: app/static/css/vintage-brass.css
 Journal Revision: 1
-Last Updated: 2026-11-25
+Last Updated: 2026-11-27
 
 ## Current State
+
+Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 Windows1.1.1 corrected candidate4911e1a is built, native-upgrade qualified and available as Workshopbase; stablefeed unchanged. Latest qualification below.
 Cockpit-only CSS instrument panel restored; existing hangar shutdown layers/dimming and morning-report reset preserved. Ordinary pages remain plain.
 Vintage Brass page-specific styling completed, including antique Cockpit instruments in existing positions. Standalone weather/Rabbit/Kiosk guide now load selected theme.
@@ -69,3 +71,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-25 — Trevor requests header radar plaque moved left to centre above Aircraft heading. Desktop Vintage header top uses equal flexible side grid tracks and centred330px plaque, eliminating offcentre flex space caused by wider left title than right Cockpit link. Header height/text unchanged; under900px retains existing responsive flex. No Cockpit instrument plaque changes. Live158/162 exact served CSS PASS; user visual alignment acceptance pending. Windows source only. Recovery remove final header-grid media block/regenerate.
 
 - 2026-11-25 final Windows qualification: source4911e1af7c97ca8e5cb0adf9372910d9047c3b32, CI45596368462 success. Corrected installer181475655bytes SHA256ba8bc68e447d5befb710e2af84a8789bd88a9a0e296f2238fd5244551a9b4aea; artifactZIPb2edd14fa7a0a7a9baf340a21adc5941e5f81218aee85a264f1af70cbe929bb5 verified. Hayley real Inno upgrade first1.1.0→1.1.1 then corrected same-version rebuild exits0/noOSreboot, native transactioncompleted. Full SQL data dump hash, all78table counts, licence/config hashes identical to original1.1.0;0aircraft/85581airports retained. Compiledserved active/securedart, vintageCSS, shutdownJS/themeLoader normalized hashes match source. Real picker endpoint regenerates correct packaged app/static:13themes includingVintage/default, generatedCSSimportsVintage. Service restart remains1.1.1/database_ready and13themes. User browser visual layout not separately exercised; images/settings/source already accepted live158/162. No virginOS/MSI-absent install, GUIwizard or1.0.5→1.1.1upgrade claim; actualfresh1.1.0qualification remains recorded separately. Qualified correctedcandidate nowWorkshopbase;5500/5510status181.5MBverified. Prior1.1.0 retained AirTrackSetup.exe.bak_pre_vintage_1.1.1_20261125 and originalcandidatefolder. First88476adartifactBLOCKED (wrongfrozenstaticroot), notdistributed. Native corrected recovery C:\ProgramData\AirTrack\updates\backups\bd8a1b3826194f109459098429430782; prior1.1.0transactionalso retained. Stable automaticfeed unchanged, no realcustomerpackage/email/purchase, SDverificationuntouched. Restore oldWorkshopbase only forfuturepackages; use native guardedtransaction forinstalledrollback, never overwrite lateruserdata blindly.
+
+- 2026-11-27 — Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.

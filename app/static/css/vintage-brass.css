@@ -402,3 +402,39 @@ body.theme-vintage_brass .header-links a {padding:2px 6px;}
  body.theme-vintage_brass .header-top .callsign-banner {width:330px;max-width:100%;margin:0;justify-self:center;}
  body.theme-vintage_brass .header-right {justify-self:end;}
 }
+
+/* ── Responsive patch 1 (C1+C2, Bob 6697) — isolated fixture only ─────────────────────────────────
+   C1: the centre plaque and the right-face compensation scale with the viewport instead of fixed
+   pixels; both equal their tuned values at 1920 (10.4vw = 200px, 3.18vw = 61px).
+   C2: gauge labels keep a 10px floor and wrap at word boundaries inside the face spacing; anchored by
+   top so a second line grows downward, away from the face. */
+body.theme-vintage_brass #cockpit-center-display {width:min(200px,10.4vw);}
+body.theme-vintage_brass .gauge-photos {left:calc(61.2% - 3.18vw) !important;}
+body.theme-vintage_brass .gauge-orphaned {left:calc(67.2% - 3.18vw) !important;}
+body.theme-vintage_brass .gauge-countries {left:calc(73.2% - 3.18vw) !important;}
+body.theme-vintage_brass .gauge-airports {left:calc(79.2% - 3.18vw) !important;}
+body.theme-vintage_brass .gauge-label {
+ font-size:max(10px,0.55em) !important;line-height:1.05;white-space:normal;overflow-wrap:normal;
+ width:max(46px,5.6vw);left:50%;transform:translateX(-50%);text-align:center;
+ top:calc(100% + 16.5px - 1vh);bottom:auto !important;
+}
+
+/* ── Responsive patch 1b (Bob 6704) — isolated fixture only ─────────────────────────────────────
+   At a true tablet width (viewport meta present) the plaque and faces need more room: narrower
+   plaque (with 11px plaque text so SECURED still fits), slightly smaller faces. Only applies at ≤900px; wider layouts are untouched. */
+@media (max-width:900px) {
+ body.theme-vintage_brass #cockpit-center-display {width:9vw;}
+ body.theme-vintage_brass .gauge {width:40px !important;height:40px !important;}
+ body.theme-vintage_brass #cockpit-center-display :is(#radar-content,#action-confirmation) {font-size:11px;letter-spacing:0;}
+}
+
+/* Aircraft detail cards have white backgrounds. */
+body.theme-vintage_brass .aircraft-notes,
+body.theme-vintage_brass .aircraft-flight-history > h2 {
+  color: var(--vb-ink);
+}
+
+body.theme-vintage_brass .aircraft-notes a {
+  color: #624213;
+  text-decoration: underline;
+}

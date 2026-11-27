@@ -1,8 +1,10 @@
 # File History: app/templates/admin.html
 Journal Revision: 1
-Last Updated: 2026-11-22
+Last Updated: 2026-11-27
 
 ## Current State
+
+Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.
 Released1.0.4: displayed version reads installed release metadata; update access is in Cockpit HUD and Settings, removed from main menu. Native test and main Hayley rendered pages/health/data preservation passed. Installer guard identity aligned; runner now requires completed transaction and exact healthy version before marking installed. Final installer SHA2568fc0e70739c5851501b6b1d7c1d180a452c8c7454c1f3a6d6e392fd6b00ffc28,171897009bytes. Python CI40451460598/source894878c; native correctionscf05983/3306653. Stable/candidate and Workshop use same artifact. Feed expiry2026-11-26T04:56:29.129008Z, ATC calendarID2 updated to15:56AEDT.
 
 ## Known Issues
@@ -25,3 +27,5 @@ Consider full isolated installer/service-mode regression before broad distributi
 - 2026-11-22 before edit: Trevor authorises community sharing/downloadableLogbook. Port qualified native client feature with defaults-off/local consent, metadata/credit retention, own-db matches and ATC review. Preserve Windows native service/updater/Weather hooks. Candidate release1.1.0; build artifact first, no stable feed switch until qualification.
 
 - 2026-11-22 candidate source ready: default-off community settings/manual-sharing/own-DB reg+MSN+type+hex matching, fresh contributor approval gate, missing-only downloads, metadata and embedded credit/licence retention, portable local locks/private backup state. Explicit native source deltas retain updater/service/Weather. Twelve community and nine metadata tests pass in isolated153Python3.11/Pillow13 runtime (not a native Windows claim). Additional hidden imports and CI regressions added. Candidate1.1.0, stable feed/base installer remains1.0.5 until compiled qualification. Recover by reverting candidate source only; no Windows data changed.
+
+- 2026-11-27 — Ported the signed-off Logbook V1 responsive and Vintage Brass release work to this target. See the V1 distribution journal for scope, verification and recovery.

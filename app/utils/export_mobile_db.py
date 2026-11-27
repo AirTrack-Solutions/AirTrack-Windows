@@ -38,7 +38,7 @@ EXPORT_DB = EXPORT_DIR / 'airtrack_mobile.db'
 MYSQL_CONFIG = {
     "host": "airtrack-db",
     "user": "SirBob",
-    "password": "ofAirTrack",
+    "password": os.getenv("DB_PASSWORD", ""),
     "database": "airtrack",
     "port": 3306,
 }
