@@ -1,0 +1,117 @@
+name: Qualify Windows installer candidate
+on:
+  push:
+    branches: [codex/windows-116-installer-qualification]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  install:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [fresh, upgrade]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: AirTrack-installer
+          path: candidate
+          run-id: 46113568522
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        if: matrix.scenario == 'upgrade'
+        with:
+          name: AirTrack-installer
+          path: previous
+          run-id: 46108877468
+          github-token: ${{ github.token }}
+      - name: Install and verify
+        shell: powershell
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $password = [guid]::NewGuid().ToString('N')
+          $secret = [guid]::NewGuid().ToString('N')
+          $cfg = @"
+          [database]
+          host = 127.0.0.1
+          port = 3307
+          name = airtrack
+          user = logbook
+          password = $password
+          uri = mysql+pymysql://logbook:$($password)@127.0.0.1:3307/airtrack?charset=utf8mb4
+          [app]
+          port = 5000
+          role = client
+          secret_key = $secret
+          "@
+          function Install-Logbook($folder, $version) {
+            [IO.File]::WriteAllText((Join-Path (Resolve-Path $folder) 'airtrack.cfg'), $cfg)
+            Set-Content (Join-Path $folder 'license.lic') 'Disposable installer qualification fixture'
+            $log = Join-Path $env:RUNNER_TEMP "logbook-$version-install.log"
+            $setup = Start-Process (Join-Path (Resolve-Path $folder) 'AirTrackSetup.exe') -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/LOG=`"$log`"")
+            if ($setup.ExitCode -ne 0) {
+              Get-Content $log -Tail 40
+              throw "Installer $version exited $($setup.ExitCode)"
+            }
+            $health = Invoke-RestMethod 'http://127.0.0.1:5000/updates/api/version'
+            if ($health.version -ne $version -or -not $health.database_ready) { throw 'Health check failed' }
+          }
+          if ($env:SCENARIO -eq 'upgrade') {
+            Install-Logbook previous '1.1.5'
+            $client = Join-Path $env:ProgramFiles 'MariaDB 11.4\bin\mariadb.exe'
+            $env:MYSQL_PWD = $password
+            & $client --host 127.0.0.1 --port 3307 --user logbook airtrack -e "CREATE TABLE installer_qualification (id INT PRIMARY KEY); INSERT INTO installer_qualification VALUES (115);"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create upgrade marker' }
+            $before = (Get-FileHash C:\AirTrack\airtrack.cfg).Hash
+          }
+          Install-Logbook candidate '1.1.6'
+          if ($env:SCENARIO -eq 'upgrade') {
+            $marker = & $client --host 127.0.0.1 --port 3307 --user logbook --batch --skip-column-names airtrack -e 'SELECT id FROM installer_qualification'
+            if ($LASTEXITCODE -ne 0 -or $marker -ne '115' -or $before -ne (Get-FileHash C:\AirTrack\airtrack.cfg).Hash) { throw 'Upgrade preservation check failed' }
+            Remove-Item Env:MYSQL_PWD
+          }
+          $base = 'http://127.0.0.1:5000/static/css/'
+          $brass = (Invoke-WebRequest -UseBasicParsing ($base + 'vintage-brass.css')).Content
+          $airlines = (Invoke-WebRequest -UseBasicParsing ($base + 'airlines_table.css')).Content
+          if ($brass -notmatch '(?s)\.callsign-banner\s*\{[^}]*text-align:\s*center;' -or $airlines -notmatch 'width: min\(75px, 22%\);') { throw 'Expected layout rules missing' }
+          Write-Output "Verified $env:SCENARIO installation of Logbook 1.1.6"
+          if ($env:SCENARIO -eq 'fresh') {
+            $client = Join-Path $env:ProgramFiles 'MariaDB 11.4\bin\mariadb.exe'
+            $env:MYSQL_PWD = $password
+            function Query($sql) {
+              $result = & $client --host 127.0.0.1 --port 3307 --user logbook --batch --skip-column-names airtrack -e $sql
+              if ($LASTEXITCODE -ne 0) { throw 'Test database query failed' }
+              $result
+            }
+            Query 'CREATE TABLE restore_fixture (id INT PRIMARY KEY); INSERT INTO restore_fixture VALUES (166);'
+            New-Item -ItemType Directory -Force 'C:\AirTrack\_internal\app\static\uploads\aircraft' | Out-Null
+            $cockpit = Invoke-WebRequest -UseBasicParsing -SessionVariable session 'http://127.0.0.1:5000/admin'
+            $token = [regex]::Match($cockpit.Content,'name="csrf-token" content="([^"]+)"').Groups[1].Value
+            if (!$token) { throw 'Cockpit CSRF token missing' }
+            function Post-Admin($route) {
+              Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Body @{csrf_token=$token} "http://127.0.0.1:5000/admin/$route"
+            }
+            Post-Admin backup | Out-Null
+            $backup = Get-ChildItem 'C:\app\backups\airtrack_backup_*.sql' | Select-Object -First 1
+            if (!$backup -or !(Test-Path ([IO.Path]::ChangeExtension($backup.FullName,'.photos.json')))) {
+              throw 'Native backup pair missing'
+            }
+            $foreign = Join-Path $backup.DirectoryName 'foreign-fixture.sql'
+            Set-Content -LiteralPath $foreign -Encoding ASCII @(
+              '-- MariaDB dump 10.19-11.8.6-MariaDB, for debian-linux-gnu (aarch64)',
+              'UPDATE restore_fixture SET id=999;',
+              '-- Dump completed on 2026-11-28 00:00:00'
+            )
+            (Get-Item $foreign).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(1)
+            Post-Admin restore | Out-Null
+            if ((Query 'SELECT id FROM restore_fixture') -ne '166') { throw 'Foreign SQL ran before rejection' }
+            Move-Item -LiteralPath $foreign -Destination (Join-Path $env:RUNNER_TEMP 'foreign-fixture.sql')
+            Query 'UPDATE restore_fixture SET id=167;'
+            Post-Admin restore | Out-Null
+            if ((Query 'SELECT id FROM restore_fixture') -ne '166') { throw 'Native restore did not restore the backup' }
+            Remove-Item Env:MYSQL_PWD
+            Write-Output 'Verified native backup, foreign SQL rejection before writes, and native restore'
+          }
