@@ -1,0 +1,16 @@
+# Hayley Logbook recovery
+
+## Reproduce the candidate
+
+1. Use a disposable MariaDB 11.4 instance with networking disabled and an owner-only workspace. Create three empty databases called source_logbook, windows_logbook and recovery_check.
+2. From the verified 2026-11-28 server SQL, stream the dump prologue and the table sections for airlines, aircraft, flights, aircraft_owners, aircraft_images, aircraft_manual_registry and app_settings into source_logbook. Match the MariaDB dump’s exact table-section headings and stop at the final view section. Retain the original dump and companion photo manifest. This extraction applies to the verified dump layout only.
+3. Initialize windows_logbook with the Windows app/db/schema.sql. Apply the eight app/migrations SQL files in filename order and record each successful migration using its full filename. Allow a nullable AirlineID on the ownership table and add the nullable TINYINT logbook_source column with default 0 to preserve the source values.
+4. In one transaction with constraints enabled, insert airlines, aircraft, flights and ownership records in that order, naming the destination columns explicitly. Compare row counts and hashes of column values ordered by primary key. Check nullable ownership entries, provenance and foreign keys. In the verified backup the image-link and manual-registry tables are empty. Abort and define a field mapping if either contains records. Reject populated source-only fields unless they have an explicit mapping. Copy only the Callsign setting.
+5. Dump the resulting schema and data without database-selection or drop-table statements. Import the result into empty recovery_check. Compare database contents again in primary key order and archive the SQL checksum. For this backup the six aircraft photo filenames must match the six published manifest entries.
+6. Verify every manifest blob by SHA-256. Stage the six published JPEGs under their original filenames and check that each decodes. Keep the private originals and Community Photos state with the original backup.
+
+## Hayley staging and cutover
+
+The current candidate is in `C:\Users\trevo\AirTrackTests\restore-1.1.4-20261128\hayley-recovery.sql`, outside **Restore Backup** discovery. Its SHA-256 is `ea25fad0cea5b58859b902e25dbbd603d9a3bf49fd92255a0f7ec2dbbcdac173`. Six verified JPEGs are in `published-photo-staging` beside it.
+
+Before an approved cutover, capture the current partial import and the running service's configuration and settings. Keep the original database available. Load the candidate into a separate clean Windows database. Preserve needed Windows registry/reference data and machine-local settings from verified Windows sources, checking keys and counts. The staged SQL includes native schema, migrations, the four populated personal-data tables and Callsign. It does not carry across server-side reference and audit contents. Verify database readiness, the Aircraft and Airlines pages, flight history, ownership and six photo HTTP responses before retiring any temporary instance. A rollback points the service back to its saved config and database. Do not place this candidate in the existing **Restore Backup** directory.
