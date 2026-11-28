@@ -4,6 +4,8 @@ Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
 
+Windows 1.1.6 is native-qualified and running on Hayley.
+
 Windows 1.1.5 candidate passed native fresh and upgrade checks. Cross-platform restore remains open.
 
 Windows 1.1.4 fixes the native restore command and is installed on Hayley.
@@ -66,3 +68,5 @@ Increment this identity with each newly published application release.
 - 2026-11-28 — Windows 1.1.5 candidate 82d0746 built in CI 46108877468; verified both artifact digests and bundled Home/ Airlines CSS. Installer SHA-256 362faaabfb40dd882d44d1eb41af8cbe0c9dd42bd367a0281f12738a9d26533f, 181486197 bytes. Native disposable Windows CI 46109202369 on qualification branch 815e4af passed fresh 1.1.5 and 1.1.4 to 1.1.5 upgrade. Both health checks passed and upgrade retained its database marker and config hash. Test used synthetic sidecars. Hayley received only the Airlines CSS and actual rendered markup replay passed. Isolated server dump restore reproduced MariaDB 1227 on australia_export due to server-specific DEFINER; see app.py journal. No installation on Hayley, publishing, Workshop replacement or database mutation. Candidate at /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.5.exe. Retain prior artifacts and Hayley recovery snapshot.
 
 - 2026-11-28 — Start Windows 1.1.6 candidate with native backup command and server-dump rejection before restore. The 1.1.5 candidate remains available as prior qualification evidence. No live update or distribution changes.
+
+- 2026-11-28 — Windows 1.1.6 afca123 build 46113675528 and both artifact digest checks passed; installer SHA-256 cc246aba2674e71c4fed21a8dad89ea8d861977b576f03ca9fe26a90989943b8, 181490444 bytes. Disposable native qualification 46114001055 passed fresh and 1.1.5 upgrade. Fresh runner verified real Cockpit POST backup, foreign SQL rejected before changing the marker, and native restore resetting the marker to its backed-up value, with correct notices. Guarded Hayley upgrade from recovered 1.1.4 exited 0, database_ready true. All 78 table counts, data snapshot, config and licence hashes match. Live Backup DB generated airtrack_backup_20261128_165555.sql, 16255596 bytes, SHA-256 390492c0e5155ba1d85bb7dcB38d2cb1c08d7c4bfb7e75480d09474697586527; verified manifest entries, on-disk blobs and live image bytes for the six restored photos. Hayley rollback transaction C:/ProgramData/AirTrack/updates/backups/c32605a42ce84cfc81a47db8ea75c2a8. No Hayley restore attempted. Server dump portability remains separate from native restore. No Workshop or signed Updates publication.

@@ -4,6 +4,8 @@ Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
 
+Windows 1.1.6 is native-qualified and running on Hayley.
+
 Hayley uses the Export 4 Mobile label and an 8 px inner inset on short Vintage Brass viewports.
 
 Hayley uses balanced Windows HUD button banks, with Clean Up on the left. The existing installer predates the change.
@@ -43,3 +45,5 @@ Consider full isolated installer/service-mode regression before broad distributi
 - 2026-11-27 — Trevor marked the brass panels’ inner edges and requested Export 4 Mobile. On short Windows Vintage Brass viewports, inset the inner button edges by another 8 CSS px and set 3 px horizontal padding. Preserve outer alignment, eight-per-bank layout, 26 px height and 13 px text, and the mobile export form action. Jinja parse and six Chromium fixture viewport checks passed, including no overflow and 47 px of right-switch clearance at 1239 × 657. Installed files hash-verified, served CSS SHA-256 86d41ed6f1156f5ecdab6d0cf3d2051f9f3e30cdac6bc73e6419fee22230e062, AirTrackClient restarted and returned version 1.1.2/database_ready. Laptop visual check and installer rebuild pending. Roll back admin-before-export4.html and vintage-brass-before-inset.css from the protected Hayley verification folder, then restart AirTrackClient.
 
 - 2026-11-28 — Surface actual Backup DB and Restore Backup results on the Cockpit after redirect. Remove optimistic success messages on form submit and render dismissible response notices, with failed or incompatible operations announced as alerts. Jinja parse passed. Native browser/HTTP verification pending. Revert the template change to recover the prior UI.
+
+- 2026-11-28 — Windows 1.1.6 afca123 build 46113675528 and both artifact digest checks passed; installer SHA-256 cc246aba2674e71c4fed21a8dad89ea8d861977b576f03ca9fe26a90989943b8, 181490444 bytes. Disposable native qualification 46114001055 passed fresh and 1.1.5 upgrade. Fresh runner verified real Cockpit POST backup, foreign SQL rejected before changing the marker, and native restore resetting the marker to its backed-up value, with correct notices. Guarded Hayley upgrade from recovered 1.1.4 exited 0, database_ready true. All 78 table counts, data snapshot, config and licence hashes match. Live Backup DB generated airtrack_backup_20261128_165555.sql, 16255596 bytes, SHA-256 390492c0e5155ba1d85bb7dcB38d2cb1c08d7c4bfb7e75480d09474697586527; verified manifest entries, on-disk blobs and live image bytes for the six restored photos. Hayley rollback transaction C:/ProgramData/AirTrack/updates/backups/c32605a42ce84cfc81a47db8ea75c2a8. No Hayley restore attempted. Server dump portability remains separate from native restore. No Workshop or signed Updates publication.
