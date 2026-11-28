@@ -965,6 +965,38 @@ def hide_disclaimer():
 # ---------------------------------------------------------------------------
 # Admin: backup / restore / flush
 # ---------------------------------------------------------------------------
+def _database_tool(tool):
+    host = os.getenv("DB_HOST", "airtrack-db")
+    port = os.getenv("DB_PORT", "3306")
+    command = {"backup": "mysqldump", "restore": "mysql"}[tool]
+    if sys.platform == "win32":
+        program_files = os.getenv("ProgramW6432") or os.getenv(
+            "ProgramFiles", r"C:\Program Files"
+        )
+        executable = {"backup": "mariadb-dump.exe", "restore": "mariadb.exe"}[tool]
+        command = str(Path(program_files) / "MariaDB 11.4" / "bin" / executable)
+        host = host.removesuffix(f":{port}")
+
+    return [
+        command,
+        "--host", host,
+        "--port", port,
+        "--user", os.getenv("DB_USER", ""),
+    ]
+
+
+def _native_windows_dump(stream):
+    header = stream.read(4096).splitlines()
+    native = any(
+        line.startswith(b"-- MariaDB dump ") and b", for Win64 (" in line
+        for line in header[:4]
+    )
+    stream.seek(-min(stream.seek(0, os.SEEK_END), 4096), os.SEEK_END)
+    lines = stream.read().strip().splitlines()
+    stream.seek(0)
+    return native and bool(lines) and lines[-1].startswith(b"-- Dump completed on ")
+
+
 @app.route("/admin/backup", methods=["POST"])
 
 def backup_database():
@@ -977,27 +1009,28 @@ def backup_database():
         filename = f"airtrack_backup_{now}.sql"
         filepath = backup_dir / filename
 
-        cmd = [
-            "mysqldump",
-            "-h",
-            os.getenv("DB_HOST", "airtrack-db"),
-            "-P",
-            os.getenv("DB_PORT", "3306"),
-            "-u",
-            os.getenv("DB_USER", ""),
-            f"-p{os.getenv('DB_PASSWORD', '')}",
+        pending = filepath.with_suffix(".sql.incomplete")
+        cmd = _database_tool("backup") + [
+            "--single-transaction", "--skip-lock-tables",
             os.getenv("DB_NAME", "airtrack"),
         ]
-
-        with open(filepath, "wb") as out:
-            proc = subprocess.run(cmd, stdout=out)
+        env = {**os.environ, "MYSQL_PWD": os.getenv("DB_PASSWORD", "")}
+        if filepath.exists():
+            raise FileExistsError("A backup already exists for this timestamp")
+        with pending.open("xb") as out:
+            proc = subprocess.run(cmd, stdout=out, env=env)
 
         if proc.returncode != 0:
-            filepath.unlink(missing_ok=True)
             raise RuntimeError("mysqldump failed")
 
+        if sys.platform == "win32":
+            with pending.open("rb") as stream:
+                if not _native_windows_dump(stream):
+                    raise RuntimeError("Native Windows backup did not produce a complete SQL dump")
         from utils.photo_backup import backup_for_app
         backup_for_app(filepath, app.static_folder)
+        os.link(pending, filepath)
+        pending.unlink()
         log_admin_action(f"Database backup saved to {filepath}")
 
     except Exception as e:
@@ -1025,26 +1058,18 @@ def restore_database():
 
         latest = backups[0]
 
-        host = os.getenv("DB_HOST", "airtrack-db")
-        port = os.getenv("DB_PORT", "3306")
-        client = "mysql"
-        if sys.platform == "win32":
-            program_files = os.getenv("ProgramW6432") or os.getenv(
-                "ProgramFiles", r"C:\Program Files"
-            )
-            client = str(Path(program_files) / "MariaDB 11.4" / "bin" / "mariadb.exe")
-            # The native launcher also embeds the configured port in DB_HOST.
-            host = host.removesuffix(f":{port}")
-
-        cmd = [
-            client,
-            "--host", host,
-            "--port", port,
-            "--user", os.getenv("DB_USER", ""),
+        cmd = _database_tool("restore") + [
             os.getenv("DB_NAME", "airtrack"),
         ]
         env = {**os.environ, "MYSQL_PWD": os.getenv("DB_PASSWORD", "")}
         with open(latest, "rb") as f:
+            if sys.platform == "win32" and not _native_windows_dump(f):
+                flash(
+                    "Restore Backup requires a complete Windows Logbook SQL backup. "
+                    "Server backups need a separate Windows recovery procedure.",
+                    "danger",
+                )
+                return redirect(url_for("admin_panel"))
             proc = subprocess.run(cmd, stdin=f, env=env)
 
         if proc.returncode == 0:
