@@ -1,6 +1,6 @@
 # File History: app/templates/admin.html
 Journal Revision: 1
-Last Updated: 2026-11-27
+Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
 
@@ -41,3 +41,5 @@ Consider full isolated installer/service-mode regression before broad distributi
 - 2026-11-27 — Trevor requested balanced HUD banks on Hayley. Move the existing client-only Clean Up button beside the backup controls in the left bank. Verified the Windows template renders eight left and seven static right buttons, plus the runtime Shut Down button for the observed eight-right configuration. The server conditional and existing Clean Up handler are intact. Replaced the installed template with a hash guard, restarted AirTrackClient, and verified 1.1.2/database_ready. Browser visual layout remains to be checked on Hayley. Restore C:/Users/trevo/AirTrackTests/vintage-1.1.2-20261127/admin-before-hud-balance.html and restart AirTrackClient to recover. The existing installer predates the change.
 
 - 2026-11-27 — Trevor marked the brass panels’ inner edges and requested Export 4 Mobile. On short Windows Vintage Brass viewports, inset the inner button edges by another 8 CSS px and set 3 px horizontal padding. Preserve outer alignment, eight-per-bank layout, 26 px height and 13 px text, and the mobile export form action. Jinja parse and six Chromium fixture viewport checks passed, including no overflow and 47 px of right-switch clearance at 1239 × 657. Installed files hash-verified, served CSS SHA-256 86d41ed6f1156f5ecdab6d0cf3d2051f9f3e30cdac6bc73e6419fee22230e062, AirTrackClient restarted and returned version 1.1.2/database_ready. Laptop visual check and installer rebuild pending. Roll back admin-before-export4.html and vintage-brass-before-inset.css from the protected Hayley verification folder, then restart AirTrackClient.
+
+- 2026-11-28 — Surface actual Backup DB and Restore Backup results on the Cockpit after redirect. Remove optimistic success messages on form submit and render dismissible response notices, with failed or incompatible operations announced as alerts. Jinja parse passed. Native browser/HTTP verification pending. Revert the template change to recover the prior UI.

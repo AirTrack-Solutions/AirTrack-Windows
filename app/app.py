@@ -1032,6 +1032,7 @@ def backup_database():
         os.link(pending, filepath)
         pending.unlink()
         log_admin_action(f"Database backup saved to {filepath}")
+        flash(f"Backup saved as {filepath.name}", "success")
 
     except Exception as e:
         logging.error("❌ Backup error: %s", e)

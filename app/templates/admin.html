@@ -93,6 +93,19 @@
 </head>
 
 <body class="theme-{{ selected_theme or 'default' }}">
+  {% with alerts = get_flashed_messages(with_categories=true) %}
+    {% if alerts %}
+      <div style="position:fixed;z-index:11000;top:1rem;left:50%;transform:translateX(-50%);max-width:min(32rem,80vw);">
+        {% for category, message in alerts %}
+          <div role="{{ 'alert' if category == 'danger' else 'status' }}"
+               style="padding:.75rem 1rem;background:#25221c;color:#fff4db;border:1px solid #b9914d;border-radius:.4rem;">
+            {{ message }}
+            <button type="button" aria-label="Dismiss message" onclick="this.parentElement.remove()">×</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
   <div class="admin-background"></div>
 
   <!-- Cockpit shutdown layers -->
@@ -121,7 +134,7 @@
       <a href="{{ url_for('index') }}"><button type="button" class="cockpit-hud-button" title="Fasten your seat belts and trays in the upright position.">Home</button></a>
 
 
-      <form class="cockpit-hud-form" action="{{ url_for('backup_database') }}" method="post" onsubmit="showCockpitConfirmation('Backup completed');">
+      <form class="cockpit-hud-form" action="{{ url_for('backup_database') }}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="cockpit-hud-button" title="For safe keeping, back it up.">Backup DB</button>
       </form>
@@ -149,7 +162,7 @@
 
       </form>
 
-      <form class="cockpit-hud-form" action="{{ url_for('restore_database') }}" method="post" onsubmit="showCockpitConfirmation('Restore completed');">
+      <form class="cockpit-hud-form" action="{{ url_for('restore_database') }}" method="post">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="cockpit-hud-button">Restore Backup</button>
       </form>
