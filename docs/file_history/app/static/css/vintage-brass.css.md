@@ -1,8 +1,10 @@
 # File History: app/static/css/vintage-brass.css
 Journal Revision: 1
-Last Updated: 2026-11-28
+Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
+
+The Vintage Brass cockpit radar text is centred in its plate on Hayley.
 
 Hayley Vintage Brass switch rows are 6 px higher with labels beside their switches. The gauges and their labels sit 4 px higher.
 
@@ -95,3 +97,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-28 — Lifted both Vintage Brass switch rows by another 2 CSS px, moving the levers, labels and hit targets together. The gauge lift stays in place. Six viewport fixtures passed switch, label, HUD and nearby gauge clearance checks. Hayley served the guarded CSS replacement with SHA-256 1570ed2c928bd24c6806bf0f518da0eb559aaa31e92954535e3c938cd4b69038 without a restart. Laptop visual check and installer rebuild remain pending. Restore vintage-brass-before-second-switch-lift.css from the protected Hayley verification folder to recover.
 
 - 2026-11-28 — Raised the eight Windows Vintage Brass gauges and attached labels another 2 CSS px. Six Chromium fixtures passed nearby gauge, switch and HUD clearance checks. Guarded CSS-only replacement on Hayley served SHA-256 e379c4485b81a6ae79352daad036b2af0d0038fa7faa7418cbd58fad60a01f3f without restart. Direct visual acceptance and installer rebuild pending. Restore vintage-brass-before-second-gauge-lift.css from the protected Hayley verification folder to recover.
+
+- 2026-11-28 — Centred radar and confirmation text on both axes inside the existing Vintage Brass plate using flex alignment. The plate dimensions and coordinates are unchanged. Chromium fixture verified text centring and fit at 768, 1280 and 1858 px. Guarded atomic replacement on Hayley matched the 1.1.4 packaged pre-image. Served CSS SHA-256 ee6580f4fc64e8e5b88e5d1c16b76b50fd2122b4d8f31d8bd3de51837d0a764d confirmed. No service restart or new installer. Recover by restoring C:/Users/trevo/AirTrackTests/restore-1.1.4-20261128/vintage-brass-before-radar.css. Live cockpit visual verification awaits database recovery.
