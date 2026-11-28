@@ -1,0 +1,80 @@
+name: Qualify Windows installer candidate
+on:
+  push:
+    branches: [codex/windows-115-installer-qualification]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  install:
+    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        scenario: [fresh, upgrade]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: AirTrack-installer
+          path: candidate
+          run-id: 46108877468
+          github-token: ${{ github.token }}
+      - uses: actions/download-artifact@v4
+        if: matrix.scenario == 'upgrade'
+        with:
+          name: AirTrack-installer
+          path: previous
+          run-id: 46106008690
+          github-token: ${{ github.token }}
+      - name: Install and verify
+        shell: powershell
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $password = [guid]::NewGuid().ToString('N')
+          $secret = [guid]::NewGuid().ToString('N')
+          $cfg = @"
+          [database]
+          host = 127.0.0.1
+          port = 3307
+          name = airtrack
+          user = logbook
+          password = $password
+          uri = mysql+pymysql://logbook:$($password)@127.0.0.1:3307/airtrack?charset=utf8mb4
+          [app]
+          port = 5000
+          role = client
+          secret_key = $secret
+          "@
+          function Install-Logbook($folder, $version) {
+            [IO.File]::WriteAllText((Join-Path (Resolve-Path $folder) 'airtrack.cfg'), $cfg)
+            Set-Content (Join-Path $folder 'license.lic') 'Disposable installer qualification fixture'
+            $log = Join-Path $env:RUNNER_TEMP "logbook-$version-install.log"
+            $setup = Start-Process (Join-Path (Resolve-Path $folder) 'AirTrackSetup.exe') -Wait -PassThru -ArgumentList @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART','/SP-',"/LOG=`"$log`"")
+            if ($setup.ExitCode -ne 0) {
+              Get-Content $log -Tail 40
+              throw "Installer $version exited $($setup.ExitCode)"
+            }
+            $health = Invoke-RestMethod 'http://127.0.0.1:5000/updates/api/version'
+            if ($health.version -ne $version -or -not $health.database_ready) { throw 'Health check failed' }
+          }
+          if ($env:SCENARIO -eq 'upgrade') {
+            Install-Logbook previous '1.1.4'
+            $client = Join-Path $env:ProgramFiles 'MariaDB 11.4\bin\mariadb.exe'
+            $env:MYSQL_PWD = $password
+            & $client --host 127.0.0.1 --port 3307 --user logbook airtrack -e "CREATE TABLE installer_qualification (id INT PRIMARY KEY); INSERT INTO installer_qualification VALUES (115);"
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create upgrade marker' }
+            $before = (Get-FileHash C:\AirTrack\airtrack.cfg).Hash
+          }
+          Install-Logbook candidate '1.1.5'
+          if ($env:SCENARIO -eq 'upgrade') {
+            $marker = & $client --host 127.0.0.1 --port 3307 --user logbook --batch --skip-column-names airtrack -e 'SELECT id FROM installer_qualification'
+            if ($LASTEXITCODE -ne 0 -or $marker -ne '115' -or $before -ne (Get-FileHash C:\AirTrack\airtrack.cfg).Hash) { throw 'Upgrade preservation check failed' }
+            Remove-Item Env:MYSQL_PWD
+          }
+          $base = 'http://127.0.0.1:5000/static/css/'
+          $brass = (Invoke-WebRequest -UseBasicParsing ($base + 'vintage-brass.css')).Content
+          $airlines = (Invoke-WebRequest -UseBasicParsing ($base + 'airlines_table.css')).Content
+          if ($brass -notmatch '(?s)\.callsign-banner\s*\{[^}]*text-align:\s*center;' -or $airlines -notmatch 'width: min\(75px, 22%\);') { throw 'Expected layout rules missing' }
+          Write-Output "Verified $env:SCENARIO installation of Logbook 1.1.5"
