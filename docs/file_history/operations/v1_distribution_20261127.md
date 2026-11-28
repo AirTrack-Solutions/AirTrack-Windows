@@ -1,8 +1,10 @@
 # Logbook V1 distribution on AirTrack-Windows
 Journal Revision: 1
-Last Updated: 2026-11-28
+Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
+
+Windows 1.1.4 fixes the native restore command and is installed on Hayley.
 
 Installer Workshop now uses native-qualified Windows 1.1.3 for new customer ZIPs.
 
@@ -85,3 +87,5 @@ user-selectable data text size to V2.
 - 2026-11-28 — Trevor approved the native 1.1.3 upgrade on Hayley. Matched installer fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff from b9a4a9b / CI 46004365508 before launching Inno. Before 1.1.2, after 1.1.3; exit 0, transaction completed, database_ready. All 78 table counts and full data snapshot, config, and licence hashes match. Verified the installed Cockpit template, eight served assets and theme picker containing Default and Vintage Brass. No new browser visual pass, fresh install or Workshop/stable promotion. Rollback transaction on Hayley: C:/ProgramData/AirTrack/updates/backups/5e4fbb2a4e534396b0104106337aaafc. Protected verification in C:/Users/trevo/AirTrackTests/vintage-1.1.3-20261128.
 
 - 2026-11-28 — Trevor explicitly asked to replace the Installer Workshop base. Atomically promoted native-qualified Windows 1.1.3 from b9a4a9b / CI 46004365508 to /home/trevor/docker/AirTrack/AirTrack-Windows/AirTrackSetup.exe. Verified 181483706 bytes and SHA-256 fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff. Workshop status on :5500 and :5510 both reported the replacement. New customer ZIPs use this base. Existing Wombat ZIPs, stable feed and customer records were unchanged. No customer ZIP was generated or sent for this check. Recovery: atomically restore AirTrackSetup.exe.bak_pre_workshop_1.1.3_20261128 from the same directory, after verifying prior SHA-256 ba8bc68e447d5befb710e2af84a8789bd88a9a0e296f2238fd5244551a9b4aea, and recheck both Workshop status endpoints.
+
+- 2026-11-28 — Windows 1.1.4 restore repair built from e273f92 in GitHub Actions 46106008690. Both artifact ZIP digests and packaged version/assets verified. Installer SHA-256 fde887d6eece5929344022523b13e256ad4096d362ee7a2f1c0715143f294f38, 181484003 bytes. Installed on Hayley with the guarded native upgrade from 1.1.3. Inno exit 0, transaction completed, version 1.1.4 and database ready. Before/after counts for 78 tables, SQL data snapshot and config/licence hashes match. Native MariaDB executable accepted a read-only SQL statement over stdin on configured port 3307. The Windows copy of airtrack_backup_20261128_120513.sql matches the server SHA-256 and was the newest completed SQL at verification. The source backup was not imported into Hayley. Protected rollback transaction: C:/ProgramData/AirTrack/updates/backups/39557c94393049beb073131aaf5e5841. Verification: C:/Users/trevo/AirTrackTests/restore-1.1.4-20261128. Candidate installer: /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.4.exe. Workshop and stable channel still use their existing artifacts.
