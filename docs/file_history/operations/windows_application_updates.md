@@ -1,8 +1,10 @@
 # Windows V1 application updates
 Journal Revision: 1
-Last Updated: 2026-10-27
+Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
+
+Signed Windows Updates stable serves 1.1.6.
 Released1.0.5: visible label is AirTrack Logbook1.0.5, with Release301/Wilbur removed; FULL_VERSION and SHORT_VERSION use the same installed semantic version. CI40452883616/source40cda52 and actual isolated/main Windows pages passed. Main signed SYSTEM4->5 returned0/statusinstalled5/database_ready;1aircraft,16settings,2files retained. Stable/candidate/Workshop artifact SHA2567b3701a3665a25dd7398b3601e9cb4511e612eecb0b6132c296e3a2ca5e84006,171897691bytes. Signed feed expires2026-11-26T05:07:28.235675Z; calendarID2 updated16:07AEDT.
 
 ## Design
@@ -34,3 +36,5 @@ Run a separate fresh-install acceptance test in a disposable Windows environment
 - 2026-10-27: Trevor approved removing the redundant Release301 label. Remove release/name display suffix and use one semantic version for FULL_VERSION/SHORT_VERSION/DISPLAY_VERSION. New package1.0.5 is required for signed updater delivery; installer guard/default/expected version aligned. Source verification and compiled acceptance pending. Prior4 release and snapshots retained for recovery.
 
 - 2026-10-27 release1.0.5: Trevor explicitly approved removal of Release301. Removed redundant release/name display and use one semantic identity; incremented5 so installed4 clients receive signed update. Source identity assertion and14updater checks passed; CI40452883616/source40cda52 full build passed. Exact native header AirTrack Logbook1.0.5 and absence Release301/Wilbur verified on isolated and main HTTPpages, with Cockpit/menu correction retained. Actual main SYSTEM4->5 taskexit0/statusinstalled5 and completed transaction;1aircraft digest,16settings,2files unchanged. Stable/candidate/Workshop share7b3701a3... (171897691bytes). Recovery: protected existing SQL/software transaction snapshots and Workshop .bak_pre_label_cleanup_1.0.5_20261027; restore/remove feed pointer to stop delivery without downgrading clients. Fresh wizard/power-cut not re-tested. CalendarID2 updated in place to26November16:07AEDT after verified signed expiry. Test services stopped/disabled and one-shot/test update tasks removed after acceptance.
+
+- 2026-11-28 — Published signed stable Windows 1.1.6 (afca123, SHA-256 cc246aba2674e71c4fed21a8dad89ea8d861977b576f03ca9fe26a90989943b8, 181490444 bytes) after candidate HTTPS/signature verification and isolated actual SYSTEM upgrade from 1.0.5. Disposable CI 46114886652 downloaded both exact public artifacts but its fresh 1.0.5 baseline did not become ready, so no upgrade was attempted there. On Hayley’s known-good isolated service, native signed download and update transaction completed (test task exit 0), readiness true; all 108515 non-migration data statements, config, licence, and one upload match. Expected new migration and empty manual registry table accounted for snapshot difference. Removed one-shot task and disabled isolated services. Stable expires 28 December 2026 at 17:14 AEDT. Prior Wombat pointers retained in /home/airtrack/windows-release-1.1.6-20261128; expired prior stable can be restored to pause distribution without downgrade. Main Hayley stays 1.1.6. Workshop remains separate.
