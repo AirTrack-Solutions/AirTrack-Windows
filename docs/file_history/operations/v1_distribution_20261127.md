@@ -4,6 +4,8 @@ Last Updated: 2026-11-28
 
 ## Current State
 
+Installer Workshop now uses native-qualified Windows 1.1.3 for new customer ZIPs.
+
 Windows 1.1.3 is packaged and passed the native upgrade on Hayley with the approved Cockpit layout.
 
 Hayley Vintage Brass switch rows are 6 px higher with labels beside their switches. The gauges and their labels sit 4 px higher.
@@ -81,3 +83,5 @@ user-selectable data text size to V2.
 - 2026-11-28 — Windows 1.1.3 packaging completed from b9a4a9b96afeba8c2c59c7334e7d0d0166d62c25. GitHub Actions 46004365508 passed updater contract tests, compiled the app, verified the pinned MariaDB MSI and built the Inno installer. Verified both artifact ZIP digests and Windows release metadata, templates, styles, tooltip/shutdown scripts and artwork against source. The Cockpit template and Vintage Brass CSS match the approved files on Hayley. Installer 181483706 bytes, SHA-256 fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff. No native 1.1.3 install, Workshop promotion or stable feed update. Keep the previous qualified installer and Hayley rollback files. Distribution artifact: /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.3.exe.
 
 - 2026-11-28 — Trevor approved the native 1.1.3 upgrade on Hayley. Matched installer fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff from b9a4a9b / CI 46004365508 before launching Inno. Before 1.1.2, after 1.1.3; exit 0, transaction completed, database_ready. All 78 table counts and full data snapshot, config, and licence hashes match. Verified the installed Cockpit template, eight served assets and theme picker containing Default and Vintage Brass. No new browser visual pass, fresh install or Workshop/stable promotion. Rollback transaction on Hayley: C:/ProgramData/AirTrack/updates/backups/5e4fbb2a4e534396b0104106337aaafc. Protected verification in C:/Users/trevo/AirTrackTests/vintage-1.1.3-20261128.
+
+- 2026-11-28 — Trevor explicitly asked to replace the Installer Workshop base. Atomically promoted native-qualified Windows 1.1.3 from b9a4a9b / CI 46004365508 to /home/trevor/docker/AirTrack/AirTrack-Windows/AirTrackSetup.exe. Verified 181483706 bytes and SHA-256 fccc6af3df649b5827930cf6e024893a41e41eaa64df5467feb72b211986eeff. Workshop status on :5500 and :5510 both reported the replacement. New customer ZIPs use this base. Existing Wombat ZIPs, stable feed and customer records were unchanged. No customer ZIP was generated or sent for this check. Recovery: atomically restore AirTrackSetup.exe.bak_pre_workshop_1.1.3_20261128 from the same directory, after verifying prior SHA-256 ba8bc68e447d5befb710e2af84a8789bd88a9a0e296f2238fd5244551a9b4aea, and recheck both Workshop status endpoints.
