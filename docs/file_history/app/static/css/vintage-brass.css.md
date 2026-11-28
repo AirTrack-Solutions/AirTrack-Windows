@@ -4,7 +4,7 @@ Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
 
-The Vintage Brass cockpit radar text is centred in its plate on Hayley.
+The Vintage Brass callsign is horizontally centred in the shared Home page header plaque on Hayley.
 
 Hayley Vintage Brass switch rows are 6 px higher with labels beside their switches. The gauges and their labels sit 4 px higher.
 
@@ -99,3 +99,5 @@ Windows binary requires next installer build; existing user selections retained.
 - 2026-11-28 — Raised the eight Windows Vintage Brass gauges and attached labels another 2 CSS px. Six Chromium fixtures passed nearby gauge, switch and HUD clearance checks. Guarded CSS-only replacement on Hayley served SHA-256 e379c4485b81a6ae79352daad036b2af0d0038fa7faa7418cbd58fad60a01f3f without restart. Direct visual acceptance and installer rebuild pending. Restore vintage-brass-before-second-gauge-lift.css from the protected Hayley verification folder to recover.
 
 - 2026-11-28 — Centred radar and confirmation text on both axes inside the existing Vintage Brass plate using flex alignment. The plate dimensions and coordinates are unchanged. Chromium fixture verified text centring and fit at 768, 1280 and 1858 px. Guarded atomic replacement on Hayley matched the 1.1.4 packaged pre-image. Served CSS SHA-256 ee6580f4fc64e8e5b88e5d1c16b76b50fd2122b4d8f31d8bd3de51837d0a764d confirmed. No service restart or new installer. Recover by restoring C:/Users/trevo/AirTrackTests/restore-1.1.4-20261128/vintage-brass-before-radar.css. Live cockpit visual verification awaits database recovery.
+
+- 2026-11-28 — Trevor’s screenshot identified /index and the shared header callsign plaque. Set text-align:center on the Vintage Brass callsign banner and reverted the earlier unrelated Cockpit alignment change. Guarded atomic Hayley deployment and HTTP SHA-256 95ad29a1209385e22cf2d7bac75ab1c7c4cb9f57bce087f7883d364414ce6e96 verified. Chromium replay of Hayley’s live /index HTML and linked styles verified less than 0.01 CSS px horizontal centre offset at 768, 1280 and 1858 px. No restart, database change or installer rebuild. Rollback CSS in C:/Users/trevo/AirTrackTests/restore-1.1.4-20261128/vintage-brass-before-home-plaque.css.

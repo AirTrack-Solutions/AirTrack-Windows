@@ -40,6 +40,7 @@ body.theme-vintage_brass .callsign-banner {
   color: #2c2115;
   font-size: clamp(1.5rem, 2.7vw, 3rem);
   letter-spacing: .035em;
+  text-align: center;
   text-shadow: 0 1px #e5cc93;
   box-shadow: inset 0 0 0 2px #73572e, 0 3px 5px #0008;
 }
@@ -391,10 +392,7 @@ body.theme-vintage_brass .gauge-countries {left:73.2% !important;transform:trans
 body.theme-vintage_brass .gauge-airports {left:79.2% !important;transform:translateX(-50%);}
 
 /* One vertical centreline for the radar plaque and all instrument faces. */
-body.theme-vintage_brass #cockpit-center-display {
- height:32px;box-sizing:border-box;
- display:flex;align-items:center;justify-content:center;
-}
+body.theme-vintage_brass #cockpit-center-display {height:32px;box-sizing:border-box;}
 body.theme-vintage_brass .gauge {
  width:61px;height:61px;box-sizing:border-box;
  top:calc(53% - 18.5px) !important;
