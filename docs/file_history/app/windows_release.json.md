@@ -4,6 +4,8 @@ Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
 
+Windows 1.1.5 candidate passed native fresh and upgrade checks. Cross-platform restore remains open.
+
 Windows 1.1.4 fixes the native restore command and is installed on Hayley.
 
 Windows 1.1.3 is packaged and build-verified with the approved Hayley Cockpit layout.
@@ -60,3 +62,5 @@ Increment this identity with each newly published application release.
 - 2026-11-28 — Windows 1.1.4 restore repair built from e273f92 in GitHub Actions 46106008690. Both artifact ZIP digests and packaged version/assets verified. Installer SHA-256 fde887d6eece5929344022523b13e256ad4096d362ee7a2f1c0715143f294f38, 181484003 bytes. Installed on Hayley with the guarded native upgrade from 1.1.3. Inno exit 0, transaction completed, version 1.1.4 and database ready. Before/after counts for 78 tables, SQL data snapshot and config/licence hashes match. Native MariaDB executable accepted a read-only SQL statement over stdin on configured port 3307. The Windows copy of airtrack_backup_20261128_120513.sql matches the server SHA-256 and was the newest completed SQL at verification. The source backup was not imported into Hayley. Protected rollback transaction: C:/ProgramData/AirTrack/updates/backups/39557c94393049beb073131aaf5e5841. Verification: C:/Users/trevo/AirTrackTests/restore-1.1.4-20261128. Candidate installer: /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.4.exe. Workshop and stable channel still use their existing artifacts.
 
 - 2026-11-28 — Started Windows 1.1.5 candidate build with the corrected Home plaque and Airlines actions layout. Native installation and isolated restore qualification are pending. The existing Workshop and Updates channels retain their prior artifacts.
+
+- 2026-11-28 — Windows 1.1.5 candidate 82d0746 built in CI 46108877468; verified both artifact digests and bundled Home/ Airlines CSS. Installer SHA-256 362faaabfb40dd882d44d1eb41af8cbe0c9dd42bd367a0281f12738a9d26533f, 181486197 bytes. Native disposable Windows CI 46109202369 on qualification branch 815e4af passed fresh 1.1.5 and 1.1.4 to 1.1.5 upgrade. Both health checks passed and upgrade retained its database marker and config hash. Test used synthetic sidecars. Hayley received only the Airlines CSS and actual rendered markup replay passed. Isolated server dump restore reproduced MariaDB 1227 on australia_export due to server-specific DEFINER; see app.py journal. No installation on Hayley, publishing, Workshop replacement or database mutation. Candidate at /home/trevor/docker/AirTrack/worktrees/logbook-v1-dist-20261127/artifacts/AirTrackSetup-1.1.5.exe. Retain prior artifacts and Hayley recovery snapshot.
