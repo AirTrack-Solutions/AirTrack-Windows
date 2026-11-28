@@ -17,7 +17,7 @@ jobs:
         with:
           name: AirTrack-installer
           path: candidate
-          run-id: 46113568522
+          run-id: 46113675528
           github-token: ${{ github.token }}
       - uses: actions/download-artifact@v4
         if: matrix.scenario == 'upgrade'
@@ -94,7 +94,7 @@ jobs:
             function Post-Admin($route) {
               Invoke-WebRequest -UseBasicParsing -WebSession $session -Method Post -Body @{csrf_token=$token} "http://127.0.0.1:5000/admin/$route"
             }
-            Post-Admin backup | Out-Null
+            if ((Post-Admin backup).Content -notmatch 'Backup saved as airtrack_backup_') { throw 'Backup success notice missing' }
             $backup = Get-ChildItem 'C:\app\backups\airtrack_backup_*.sql' | Select-Object -First 1
             if (!$backup -or !(Test-Path ([IO.Path]::ChangeExtension($backup.FullName,'.photos.json')))) {
               throw 'Native backup pair missing'
@@ -106,11 +106,11 @@ jobs:
               '-- Dump completed on 2026-11-28 00:00:00'
             )
             (Get-Item $foreign).LastWriteTimeUtc = [DateTime]::UtcNow.AddMinutes(1)
-            Post-Admin restore | Out-Null
+            if ((Post-Admin restore).Content -notmatch 'Server backups need a separate Windows recovery procedure') { throw 'Foreign backup rejection notice missing' }
             if ((Query 'SELECT id FROM restore_fixture') -ne '166') { throw 'Foreign SQL ran before rejection' }
             Move-Item -LiteralPath $foreign -Destination (Join-Path $env:RUNNER_TEMP 'foreign-fixture.sql')
             Query 'UPDATE restore_fixture SET id=167;'
-            Post-Admin restore | Out-Null
+            if ((Post-Admin restore).Content -notmatch 'Restored from airtrack_backup_') { throw 'Restore success notice missing' }
             if ((Query 'SELECT id FROM restore_fixture') -ne '166') { throw 'Native restore did not restore the backup' }
             Remove-Item Env:MYSQL_PWD
             Write-Output 'Verified native backup, foreign SQL rejection before writes, and native restore'
