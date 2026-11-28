@@ -1025,21 +1025,33 @@ def restore_database():
 
         latest = backups[0]
 
-        log_admin_action("Database restored.")
+        host = os.getenv("DB_HOST", "airtrack-db")
+        port = os.getenv("DB_PORT", "3306")
+        client = "mysql"
+        if sys.platform == "win32":
+            program_files = os.getenv("ProgramW6432") or os.getenv(
+                "ProgramFiles", r"C:\Program Files"
+            )
+            client = str(Path(program_files) / "MariaDB 11.4" / "bin" / "mariadb.exe")
+            # The native launcher also embeds the configured port in DB_HOST.
+            host = host.removesuffix(f":{port}")
+
         cmd = [
-            "mysql",
-            f"-h{os.getenv('DB_HOST', 'airtrack-db')}",
-            f"-u{os.getenv('DB_USER', '')}",
-            f"-p{os.getenv('DB_PASSWORD', '')}",
+            client,
+            "--host", host,
+            "--port", port,
+            "--user", os.getenv("DB_USER", ""),
             os.getenv("DB_NAME", "airtrack"),
         ]
+        env = {**os.environ, "MYSQL_PWD": os.getenv("DB_PASSWORD", "")}
         with open(latest, "rb") as f:
-            proc = subprocess.run(cmd, stdin=f)
+            proc = subprocess.run(cmd, stdin=f, env=env)
 
         if proc.returncode == 0:
+            log_admin_action(f"Database restored from {latest.name}.")
             flash(f"Restored from {latest.name}", "success")
         else:
-            raise RuntimeError("mysql restore failed")
+            raise RuntimeError(f"MariaDB restore exited with status {proc.returncode}")
     except Exception as e:
         logging.error("❌ Restore error: %s", e)
         flash("Restore failed.", "danger")

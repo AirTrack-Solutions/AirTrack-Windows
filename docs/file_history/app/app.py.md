@@ -1,8 +1,10 @@
 # File History: app/app.py
 Journal Revision: 1
-Last Updated: 2026-11-22
+Last Updated: 2026-11-28 Australia/Sydney
 
 ## Current State
+The native Windows restore handler now targets the installer’s MariaDB client and reports success only after the import exits successfully. A rebuilt Windows package and isolated native import remain pending.
+
 2026-10-26: Windows client now includes the settings-backed METAR page and all current158 freshness/name/instrument-layout fixes. Local Weather settings persist station choices; NOTAM installer-only selection remains separate. Frozen timezone data is bundled.
 
 2026-10-25 verified outcome: Actual clean compiled Windows application from build40190160286 (source1e76b9798314a6bb2ddb67a58ca29ebb981a4921) passed on Hayley via SSH in debug mode against a private cloned database on127.0.0.1:33317. /notams returned200 with all six configured cards; YSWS and YMML API endpoints returned200/count0 (no notices in copied DB). Actual binary accepted six codes and rejected seven/duplicates. No pip overlays in final bundle. Original AirTrackClient service path/config preserved, source config SHA unchanged, original service and both existing DB services running after test, temporary DB/app stopped and port33317 closed. This is a compiled-app smoke test, not a full Inno wizard/fresh-install/LocalSystem service test.
@@ -33,3 +35,5 @@ Run a full isolated installer/service-mode test when planned.
 - 2026-11-22 before edit: Trevor authorises community sharing/downloadableLogbook. Port qualified native client feature with defaults-off/local consent, metadata/credit retention, own-db matches and ATC review. Preserve Windows native service/updater/Weather hooks. Candidate release1.1.0; build artifact first, no stable feed switch until qualification.
 
 - 2026-11-22 candidate source ready: default-off community settings/manual-sharing/own-DB reg+MSN+type+hex matching, fresh contributor approval gate, missing-only downloads, metadata and embedded credit/licence retention, portable local locks/private backup state. Explicit native source deltas retain updater/service/Weather. Twelve community and nine metadata tests pass in isolated153Python3.11/Pillow13 runtime (not a native Windows claim). Additional hidden imports and CI regressions added. Candidate1.1.0, stable feed/base installer remains1.0.5 until compiled qualification. Recover by reverting candidate source only; no Windows data changed.
+
+- 2026-11-28: Trevor reported two Windows 1.1.3 restore attempts in C:\AirTrackCandidate that failed with WinError 2 after an incorrectly early success log. Windows restore now invokes MariaDB 11.4 bin/mariadb.exe under ProgramW6432 or ProgramFiles, passing the configured host and port separately. Credentials travel in the child environment. The newest completed SQL remains the restore selection and success is logged only after a zero exit status. Syntax, whitespace and an isolated handler harness passed: native installer path, port 3307, credentials, byte stream, incomplete backup exclusion, and failed/successful result reporting. The harness mocked the client and made no database changes. No rebuilt package, live laptop changes or restore attempted. Recovery is a scoped revert of the restore handler. Photo recovery remains separate.
