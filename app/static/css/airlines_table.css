@@ -253,3 +253,17 @@
 /* A3 (Trevor 6859 / Bob 6862): keep airline logos inside the Logo column. The template sets height:30px inline;
    max-width caps a wide logo at the cell width and object-fit keeps its aspect ratio (letterboxed, never stretched). */
 .airlines-table td:nth-child(1) img { max-width: 100%; object-fit: contain; vertical-align: middle; }
+
+@media (min-width: 768px) {
+    .airlines-table th:nth-child(1) { width: 20%; }
+    .airlines-table th:nth-child(2) { width: 27%; }
+    .airlines-table th:nth-child(3) { width: 17%; }
+    .airlines-table th:nth-child(4) { width: 36%; }
+
+    .airlines-table td:last-child > .btn {
+        box-sizing: border-box;
+        width: min(75px, 22%);
+        padding-inline: 2px;
+        white-space: nowrap;
+    }
+}
